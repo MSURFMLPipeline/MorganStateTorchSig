@@ -1,2 +1,2 @@
-# MSUTorchSig
+# MSUTorch
 This Github project is showcasing a RFML dataset generation framework through a collaboration between Morgan State senior Electrical and Computer Engineering students at Morgan State University and the Aerospace Coporation. The student team includes Corey Hicks, Zimiego Smith, and Jamari Richardson working under the guidance of a subject matter expert from the Aerospace Coporation, Lucas Burgess and an Morgan State faculty advisor, Dr. Willie Thompson. 
