@@ -56,8 +56,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://torchsig.com/"
 Documentation = "https://torchsig.readthedocs.io/en/latest/index.html"
-Repository = "https://github.com/TorchDSP/torchsig.git"
-Issues = "https://github.com/TorchDSP/torchsig/issues"
+Repository = "https://github.com/zimsmith12/MorganStateTorchSig"
+Issues = "https://github.com/zimsmith12/MorganStateTorchSig/issues"
 
 [tool.setuptools.packages.find]
 # Automatically find all packages starting in root directory
