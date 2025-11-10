@@ -2,7 +2,7 @@
 """
 
 import yaml
-from torchsig.datasets.dataset_metadata import DatasetMetadata
+from MSUTorch.configs.dataset_metadata import DatasetMetadata
 from torchsig.datasets.datasets import TorchSigIterableDataset
 
 
