@@ -3,18 +3,6 @@
 
 from __future__ import annotations
 
-# TorchSig
-from torchsig.signals.signal_lists import TorchSigSignalLists
-from torchsig.utils.verify import (
-    verify_int,
-    verify_float,
-    verify_distribution_list,
-    verify_list
-)
-from torchsig.utils.printing import (
-    dataset_metadata_str,
-)
-
 # Third Party
 import numpy as np
 from typing import Dict, List, Any
@@ -30,24 +18,6 @@ def load_dataset_metadata(filepath):
     return DatasetMetadata(**loaded_yaml['required']).update_from(loaded_yaml['overrides'])
 
 class DatasetMetadata():
-    """Dataset Metadata base class. Contains useful information about the dataset.
-
-    Maintains the metadata for the parameters of the datasets, such as
-    sample rate. The class holds all of the high level information
-    about the dataset that the signals, impairments and other
-    processes will require. Parameters that are common to all signals
-    will be stored in the dataset metadata. For example, all signal
-    generation requires a common and consistent sampling rate reference.
-
-    This class is needed needed at almost every level of the DSP, therefore
-    rather than pass around multiple variables, or a dict, or use globals, this
-    class is defined and passed as a parameter.
-
-    This class stores metadata related to the dataset, including parameters
-    related to signal generation, transforms, dataset path, and sample distribution.
-    It also handles the verification of dataset settings and ensures that the configuration 
-    is valid for the dataset creation process.
-    """
 
     minimum_params: List[str] = [
         'num_iq_samples_dataset',
@@ -76,7 +46,6 @@ class DatasetMetadata():
         class_distribution: np.ndarray | List[float]= None,
         **kwargs
     ):
-        """Initializes Dataset Metadata
 
         Args:
             num_iq_samples_dataset (int): Length of I/Q array in dataset.
