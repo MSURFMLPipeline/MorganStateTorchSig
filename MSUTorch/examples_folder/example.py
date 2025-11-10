@@ -1,8 +1,3 @@
-Saving to YAML
-from MSUTorch.dataset.dataset_metadata import DatasetMetadata
-from MSUTorch.storage.yaml import save_dataset_yaml, load_dataset_yaml
-filepath = "./datasets/yaml_test_dataset"
-
 Loading from YAML
 dataset = default_dataset(seed=42, target_labels=["class_name","snr_db"], impairment_level=None) # basic default dataset used for testing
 save_dataset_yaml(filepath, dataset)
