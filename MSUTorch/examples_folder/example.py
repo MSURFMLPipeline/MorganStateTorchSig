@@ -1,5 +1,5 @@
 Saving to YAML
-from MSUTorch.configs.dummy_config import DatasetMetadata
+from MSUTorch.configs.dataset_metadata import DatasetMetadata
 from MSUTorch.storage.yaml import save_dataset_yaml, load_dataset_yaml
 filepath = "./datasets/yaml_test_dataset"
 
