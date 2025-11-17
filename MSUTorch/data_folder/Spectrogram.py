@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from torchsig.datasets.dataset_metadata import DatasetMetadata
-from torchsig.datasets.datasets import TorchSigIterableDataset
+from MSUTorch.data_folder.datasets import DatasetMetadata
+from MSUTorch.data_folder.metadata import TorchSigIterableDataset
 
 #Define dataset parameters
 
