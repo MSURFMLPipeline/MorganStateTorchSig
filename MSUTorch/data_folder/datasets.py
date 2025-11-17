@@ -1,7 +1,4 @@
-import numpy as np
-from typing import Dict, List, Any
-import yaml
-from torchsig.utils.verify import (
+from MSUTorch.utils.verify import (
     verify_int,
     verify_float,
     verify_distribution_list,
@@ -10,6 +7,9 @@ from torchsig.utils.verify import (
 from torchsig.utils.printing import (
     dataset_metadata_str,
 )
+
+from __future__ import annotations
+from copy import deepcopy, copy
 
 # Third Party
 import numpy as np
@@ -74,9 +74,8 @@ class DatasetMetadata():
         Raises:
             ValueError: If any of the provided parameters are invalid or incompatible
         """    
-        #super().__init__(**kwargs)
+#super().__init__(**kwargs)
 self._kwargs = kwargs
-        
 self.num_iq_samples_dataset = num_iq_samples_dataset
 self.sample_rate = sample_rate
 self.fft_size = fft_size
