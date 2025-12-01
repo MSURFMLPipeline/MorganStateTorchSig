@@ -10,7 +10,7 @@ class one:
         self.phase=phase 
         self.data_points=data_points
         self.frequency=frequency
-first_wave=one(random(float),random(int),random(int))
+first_wave=one(random,random,random)
 second_wave=one(0,100,200)
 
 print(one.waveform) 
