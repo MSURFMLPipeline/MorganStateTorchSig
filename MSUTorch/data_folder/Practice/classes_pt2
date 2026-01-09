@@ -1,0 +1,139 @@
+"""Classes Practice generating sine wave, including class inheritance
+
+syntax for classes is:
+
+class [class name]:
+def __init__(self,name1,name2): #Always begins when a class is created # init() is used for assigning values to object properties, parameters, etc
+    self.name1=name #Gives properties values and names from def init #A kind of naming convention
+    def name3(self) #Self is used for linking methods to a specific object 
+        return ends the class or function but isnt a requirement, used for being able to call back variables, values etc.
+
+s1=class[name](values) #Creates an object from the class parameters used for inputing values from the class
+s1.name3() #calculates the name3 from the class
+"""
+
+""" CLass inheritance
+class2 [class name]:
+def __init__(self,name1, name2,name4) #Calling the parameters from the first class #You can also add new parameters to the new class in def __init__ 
+super()._init__(name1,name2) #Used for class inheritance #Has to have the parameters from the class you are inheriting from
+"""
+"""Don't need self name but it makes it easier to follow"""
+class blah: 
+    def __init__(mystring,name): 
+        mystring.name=name
+    def print(self):
+        print(f"My name is " + self.name) 
+
+p1=blah("Lucas")
+p1.print()
+
+class name:
+    def __init__(string,person):
+        string.person=person
+    def show(self): 
+        print(f"Hello "+ self.person)
+p2=name("Zim") 
+p2.show()
+
+class input:
+    def __init__(self,frequency1):
+        self.frequency1=frequency1
+    def enter(self):
+        return print(f"The input frequency is {self.frequency1}")
+
+    def set(self,frequency):
+        self.frequency1=frequency
+
+
+p3=input(90)
+p3.enter()
+p3.set(150)
+p3.enter()
+
+""" Having the user input frequency""" 
+#class User:
+ #   def __init__(self,freq):
+  #      self.freq = freq
+   # def frequency2(self):
+    #    print(f"Your user input frequency is: {self.freq}")
+     #   return
+    
+#u1=User()
+#u1.frequency2()
+
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+class sine_Wave:
+    def __init__(self,phase, frequency, stoptime_input, starttime_input):
+        self.phase=phase
+        self.frequency=frequency
+        self.stoptime_input=stoptime_input
+        self.starttime_input=starttime_input
+    
+    def time(self):
+       return np.arange(self.starttime_input,self.stoptime_input,0.1)
+    
+    def sine_wave(self):
+        return np.sin(self.frequency*self.time() + np.radians(self.phase))
+    
+
+
+s1=sine_Wave(90,10, 20, 2)
+s1.sine_wave()
+
+
+plt.plot(s1.time(),s1.sine_wave(),color='purple')
+plt.title("Sine Wave s1 using classes")
+plt.xlabel("Time")
+plt.ylabel("Data points")
+plt.show()
+print(f" The values of the sine wave data points are {s1.sine_wave()}")
+
+
+class new_sine_wave(sine_Wave):
+    def __init__(self, phase, frequency, amplitude,stoptime_input, starttime_input):
+        super().__init__(phase,frequency,starttime_input,stoptime_input)
+        self.amplitude=amplitude
+
+    def amp_sine_wave(self):
+        return self.amplitude*self.sine_wave()
+
+s2=new_sine_wave(90,10,2,3,15)
+s2.amp_sine_wave()
+
+plt.plot(s2.time(),s2.amp_sine_wave(),color='red')
+plt.title("Sine Wave s2 using classes with added amplitude")
+plt.xlabel("Time")
+plt.ylabel("Data points")
+plt.show()
+
+"""def new_sine_wave(phase, frequency, amplitude):
+    #t2 = np.arange(0, 10, 0.1)
+    #new_sin_wave_Y = amplitude * np.sin((frequency * t2) + np.radians(phase))
+    sine_wave_Y,t= sine_wave(phase,frequency)
+    sine_wave_Y=sine_wave_Y*amplitude
+    return sine_wave_Y,t
+
+sine,t= new_sine_wave(phase=180, frequency=4, amplitude=2)"""
+
+
+"""plt.plot(t, sine)
+plt.title("Sine Wave w/o added amplitude")
+plt.xlabel("Time (t)")
+plt.ylabel("Amplitude (Y)")
+plt.grid(True)
+plt.show()
+
+sine,t = new_sine_wave(30, 20, 4)
+t,sine_wave_Y=new_sine_wave(30,20,4)
+
+plt.plot(t, sine,color='red')
+plt.title("Sine Wave s2 with added amplitude")
+plt.xlabel("Time (t)")
+plt.ylabel("Amplitude (Y)")
+plt.grid(True)
+plt.show()"""
