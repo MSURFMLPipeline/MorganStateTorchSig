@@ -144,7 +144,7 @@ dataset = TorchSigIterableDataset(
     target_labels = ["class_name", "start", "stop", "lower_freq", "upper_freq", "snr_db"],
 )
 
-dataloader = WorkerSeedingDataLoader(dataset, batch_size=10, num_workers=1, collate_fn=default_collate_fn)
+dataloader = WorkerSeedingDataLoader(dataset, batch_size=9, num_workers=1, collate_fn=default_collate_fn)
 dataloader.seed(seed)
 
 # New simplified DatasetCreator API # Used for organizing and storing large amounts of data
