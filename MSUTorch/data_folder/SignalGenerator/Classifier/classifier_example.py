@@ -44,7 +44,7 @@ transforms = [ComplexTo2D()]
 """Initial Analysis: Has the libraries from the create dataset example, Just creating DatasetMetadata but now it is splitting the Dataset into training and validation 
 Additionally there is now a dataloader for train and validation
 
-Classes: 1. DatasetMetadata, 2. WorkerSeedingDataLoader, 3. TorchSigIterableDataset, 4. DatasetCreator 
+Classes: 1. DatasetMetadata, 2. WorkerSeedingDataLoader, 3. TorchSigIterableDataset, 4. DatasetCreator, 5.StaticTorchSigDataset
 
 1. DatasetMetadata is used for defining dataset parameter values
 2. WorkerSeedingDataLoader is used for testing, debugging and reproducing experiments. DataLoader seeds(the seeds are random unique) each worker process differently using a shared seed. From Seedable
@@ -53,13 +53,15 @@ Classes: 1. DatasetMetadata, 2. WorkerSeedingDataLoader, 3. TorchSigIterableData
 - Seed controls randomness 
 3.TorchSigIterableDataset is used for generating synthetic data infinitely in memory using randomized DatasetMetadata values
 4.DatasetCreator is used to create a dataset which is then saved to disk in batches
-5.
+5.StaticTorchSigDataset is loading a dataset from disk
 
+Batches = samples divided by batch size 
+The batch will have the batch size for the first few batches while the remaining will be put into the last one
 """
 from torchsig.datasets.dataset_metadata import DatasetMetadata
 from torchsig.datasets.datasets import TorchSigIterableDataset, StaticTorchSigDataset
 from torchsig.utils.data_loading import WorkerSeedingDataLoader
-from torchsig.utils.writer import DatasetCreator #
+from torchsig.utils.writer import DatasetCreator 
 
 dataset_metadata = DatasetMetadata(
     num_iq_samples_dataset = num_iq_samples_dataset,
@@ -111,7 +113,7 @@ print(train_dataset[0])
 next(iter(train_dataloader))
 """-----------------------------------------------------------------------------"""
 #Create the Model
-
+""" Can choose from two prebuilt models either XCiT or DETR """
 
 from torchsig.models import XCiTClassifier
 from torchinfo import summary
@@ -124,7 +126,12 @@ summary(model)
 
 """----------------------------------------------------"""
 #Train the Model
-
+""" 
+PyTorch Lightning is a lightweight wrapper for PyTorch simplifies the process of training deep learning models. Organizes code into reusable components like LightningModule, LightningDataModule, and Trainer
+- epoch is one complete pass through an entire dataset. how many times the data is being seen
+- limiting batches for training and validation
+-trainer.fit 
+"""
 
 import torch
 import pytorch_lightning as pl
