@@ -57,6 +57,8 @@ Classes: 1. DatasetMetadata, 2. WorkerSeedingDataLoader, 3. TorchSigIterableData
 
 Batches = samples divided by batch size 
 The batch will have the batch size for the first few batches while the remaining will be put into the last one
+More batches = smaller batch size
+Less batches = larger batch size
 """
 from torchsig.datasets.dataset_metadata import DatasetMetadata
 from torchsig.datasets.datasets import TorchSigIterableDataset, StaticTorchSigDataset
