@@ -3,29 +3,31 @@ Utilizes Pytorch which is an open source library and implifies deep learning and
 
 Tensors are used as a multi-dimensional array and is fundamental for structuring data in ML and deep learning. They are used in PyTorch to prepare data for the deep learning model. 
 
-Batching is a data processing technique. Batch_Size 
+Batching is a data processing technique where data is divided into smaller groups called batches. Batch_Size is defining how many data samples are in each batch.
+
 
 """
 
 
 # Variables
-"""Our Iniitial Analysis: Defining All the neccessary variables """
-from torchsig.signals.signal_lists import TorchSigSignalLists 
-from torchsig.transforms.transforms import ComplexTo2D %
-import os
+"""Our Iniitial Analysis: Defining All the neccessary variables and creating directory"""
+from torchsig.signals.signal_lists import TorchSigSignalLists #Config file that has dictionaries of signal classes 
+from torchsig.transforms.transforms import ComplexTo2D # Converts IQ data into two channels,real and imaginary parts
+import os # interacting with operating system
 
 from torch import Tensor 
 
-root = "./datasets/classifier_example"
-os.makedirs(root, exist_ok=True) 
-os.makedirs(root + "/train", exist_ok=True)
-os.makedirs(root + "/val", exist_ok=True)
-os.makedirs(root + "/test", exist_ok=True)
+root = "./datasets/classifier_example" #Directory path
+os.makedirs(root, exist_ok=True)  #Creating directory from root and if it exist nothing happens
+os.makedirs(root + "/train", exist_ok=True) #Subdirectory for training
+os.makedirs(root + "/val", exist_ok=True) #Subdirectory for validation
+os.makedirs(root + "/test", exist_ok=True) #Subdirectory for testing
+
 fft_size = 256
-num_iq_samples_dataset = fft_size ** 2
-class_list = TorchSigSignalLists.all_signals
-family_list = TorchSigSignalLists.family_list
-num_classes = len(class_list)
+num_iq_samples_dataset = fft_size ** 2 #fft_size^2
+class_list = TorchSigSignalLists.all_signals #All the signals from the TorchsigSignalsList
+family_list = TorchSigSignalLists.family_list #List the values from family_dict(The family_dict is a dictionary that has all signal types and families) from TorchSignalList
+num_classes = len(class_list) #Length of the all the signals from TorchsigSignalsList 
 num_samples_train = len(class_list) * 10 # roughly 10 samples per class 
 num_samples_val = len(class_list) * 2 # roughly 2 samples per class
 impairment_level = 0
@@ -44,13 +46,20 @@ Additionally there is now a dataloader for train and validation
 
 Classes: 1. DatasetMetadata, 2. WorkerSeedingDataLoader, 3. TorchSigIterableDataset, 4. DatasetCreator 
 
-
+1. DatasetMetadata is used for defining dataset parameter values
+2. WorkerSeedingDataLoader is used for testing, debugging and reproducing experiments. DataLoader seeds(the seeds are random unique) each worker process differently using a shared seed. From Seedable
+- This loader prohibits external worker_init_fn definitions and sets its own init function to ensure reproducible randomness in multi-worker pipelines.
+- Workers are responsible for doing task at the same time
+- Seed controls randomness 
+3.TorchSigIterableDataset is used for generating synthetic data infinitely in memory using randomized DatasetMetadata values
+4.DatasetCreator is used to create a dataset which is then saved to disk in batches
+5.
 
 """
 from torchsig.datasets.dataset_metadata import DatasetMetadata
 from torchsig.datasets.datasets import TorchSigIterableDataset, StaticTorchSigDataset
 from torchsig.utils.data_loading import WorkerSeedingDataLoader
-from torchsig.utils.writer import DatasetCreator
+from torchsig.utils.writer import DatasetCreator #
 
 dataset_metadata = DatasetMetadata(
     num_iq_samples_dataset = num_iq_samples_dataset,
@@ -63,7 +72,7 @@ dataset_metadata = DatasetMetadata(
 train_dataset = TorchSigIterableDataset(dataset_metadata, transforms=transforms, target_labels=None)
 val_dataset = TorchSigIterableDataset(dataset_metadata, transforms=transforms, target_labels=None)
 
-train_dataloader = WorkerSeedingDataLoader(train_dataset, batch_size=4, collate_fn = lambda x: x)
+train_dataloader = WorkerSeedingDataLoader(train_dataset, batch_size=4, collate_fn = lambda x: x) #Batch size is how many samples you want loaded at one time #Collate is collecting and combining the samples into batches
 val_dataloader = WorkerSeedingDataLoader(val_dataset, collate_fn = lambda x: x) 
 
 #print(f"Data shape: {data.shape}")
