@@ -12,7 +12,6 @@ from torchsig.datasets.datasets import StaticTorchSigDataset
 
 class MSUTorchDataset:
     def __init__(self,sample_rate,iq_samples,fft_size,snr_min,snr_max,min_signals,max_signals,class_index):
-           super().__init
         self.sample_rate=sample_rate
         self.iq_samples=iq_samples
         self.fft_size=fft_size
@@ -21,6 +20,8 @@ class MSUTorchDataset:
         self.min_signals=min_signals
         self.max_signals=max_signals
         self.class_index=class_index
+        self.fft_size=
+        self.
 
     def modulation(self):
     
@@ -34,6 +35,9 @@ class MSUTorchDataset:
         else:
             return self.snr_min,self.snr_max
 
+    def iq_data(self):
+        #Splitting into real and imaginary
+
 
 
 """
@@ -42,4 +46,4 @@ dataset_metadata = dataset_time_series_metadata,
 target_labels=["class_index"] """
 
 s1=MSUTorchDataset(90,10, 20, 10, 39, 40, 70, 9 )
-s1.modulation()
+s1.clean()
