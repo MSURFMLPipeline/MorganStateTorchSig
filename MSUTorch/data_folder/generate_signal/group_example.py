@@ -171,7 +171,7 @@ static_dataset = StaticTorchSigDataset(
 
 # can access any sample
 print(static_dataset[0])
-print(static_dataset[5])
+print(static_dataset[6])
 
 # --------------------------
 # Dataset Statistics
