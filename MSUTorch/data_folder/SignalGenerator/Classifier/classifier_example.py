@@ -1,9 +1,19 @@
+"""Classifier Example
+Utilizes Pytorch which is an open source library and implifies deep learning and machine learning
+
+Tensors are used as a multi-dimensional array and is fundamental for structuring data in ML and deep learning. They are used in PyTorch to prepare data for the deep learning model. 
+
+Batching is a data processing technique. Batch_Size 
+
+"""
+
+
 # Variables
-from torchsig.signals.signal_lists import TorchSigSignalLists
+from torchsig.signals.signal_lists import TorchSigSignalLists 
 from torchsig.transforms.transforms import ComplexTo2D
 import os
 
-from torch import Tensor
+from torch import Tensor 
 
 root = "./datasets/classifier_example"
 os.makedirs(root, exist_ok=True)
