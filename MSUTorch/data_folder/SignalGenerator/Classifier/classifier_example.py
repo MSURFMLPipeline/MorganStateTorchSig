@@ -132,7 +132,7 @@ summary(model)
 PyTorch Lightning is a lightweight wrapper for PyTorch simplifies the process of training deep learning models. Organizes code into reusable components like LightningModule, LightningDataModule, and Trainer
 - epoch is one complete pass through an entire dataset. how many times the data is being seen
 - limiting batches for training and validation
--trainer.fit 
+-trainer.fit handles training loop of batches and epochs
 """
 
 import torch
