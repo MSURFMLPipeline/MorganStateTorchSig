@@ -12,6 +12,7 @@ from torchsig.datasets.datasets import StaticTorchSigDataset
 
 class MSUTorchDataset:
     def __init__(self,sample_rate,iq_samples,fft_size,snr_min,snr_max,min_signals,max_signals,class_index):
+           super().__init
         self.sample_rate=sample_rate
         self.iq_samples=iq_samples
         self.fft_size=fft_size
@@ -22,7 +23,18 @@ class MSUTorchDataset:
         self.class_index=class_index
 
     def modulation(self):
-        return TorchSigIterableDataset["class_index"]
+    
+        
+     def clean_data(self):
+        if self.snr_min != self.snr_max:
+            return print("The signal will not be a clean singal")
+        elif self.snr_min&self.snr_max==30:
+            print("The signal is clean")
+            return self.snr_max
+        else:
+            return self.snr_min,self.snr_max
+
+
 
 """
         dataset_time_series = TorchSigIterableDataset(
