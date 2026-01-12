@@ -153,7 +153,8 @@ trainer.fit(model, train_dataloader)
 """---------------------------------------------------------------------------------"""
 #Test the Model
 """
-
+Defining Metadata from training, taking training dataset loading it for dataset testing  
+one sample at a time, evaluating entire model 
 
 """
 from torchsig.datasets.datasets import TorchSigIterableDataset, StaticTorchSigDataset
@@ -186,7 +187,7 @@ dc = DatasetCreator(
     dataloader=dataloader,
     root = f"{root}/test",
     overwrite=True,
-    dataset_length=100
+    dataset_length=100 #100 test samples
 )
 dc.create()
 
