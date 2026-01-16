@@ -10,35 +10,50 @@ from tqdm.notebook import tqdm
 from torchsig.signals.signal_lists import TorchSigSignalLists
 from torchsig.datasets.datasets import StaticTorchSigDataset
 
-class MSUTorchDataset:
-    def __init__(self,sample_rate,iq_samples,fft_size,snr_min,snr_max,min_signals,max_signals,class_index):
-        self.sample_rate=sample_rate
-        self.iq_samples=iq_samples
-        self.fft_size=fft_size
-        self.snr_min=snr_min
-        self.snr_max=snr_max
-        self.min_signals=min_signals
-        self.max_signals=max_signals
-        self.class_index=class_index
-        self.fft_size=
-        self.
+class MSUTorchMetaData:
+    def __init__(self,num_iq_samples_dataset, fft_size, num_signals_min, num_signals_max, snr_db_min, snr_db_max, class_list) 
 
-    
-    def modulation(self):
-    
+    self.num_iq_samples_dataset=num_iq_samples_dataset
+    self.fft_size=fft_size
+    self.num_signals_min=num_signals_min
+    self.num_signals_max=num_signals_max
+    self.snr_db_min=snr_db_min
+    self.snr_db_max=snr_db_max
+    self.class_list=class_list
+
+    def MSUTorchMetaData_to_TorchSigMetadata
+     return DatasetMetadata(
+        num_iq_samples_dataset=self.num_iq_samples_dataset,
+        fft_size=self.fft_size,
+        num_signals_min=self.num_signals_min,
+        num_signals_max=self.num_signals_max,
+        snr_db_min=self.snr_db_min,
+        snr_db_max=self.snr_db_max,
+        class_list=self.class_list,
+
+class MSUTorchDataset(MSUTorchMetaData):
+    def __init__(self): #Inherits from self 
+        super().__init__()
+
+    def dataset(self):
+        return self
         
      def clean_data(self):
         if self.snr_min != self.snr_max:
             return print("The signal will not be a clean singal")
-        elif self.snr_min&self.snr_max==30:
+        elif self.snr_min == self.snr_max ==30:
             print("The signal is clean")
             return self.snr_max
         else:
             return self.snr_min,self.snr_max
 
-    def iq_data(self):
+#    def iq_data(self):
         #Splitting into real and imaginary
 
+ #   def EMI_data(self):
+        #EMI data or tones
+
+#    class ComponentSignals
 
 
 """
@@ -46,5 +61,5 @@ class MSUTorchDataset:
 dataset_metadata = dataset_time_series_metadata, 
 target_labels=["class_index"] """
 
-s1=MSUTorchDataset(90,10, 20, 10, 39, 40, 70, 9 )
-s1.clean()
+metadata=MSUTorchDataset(90,10, 20, 10, 39, 40, 70, 9)
+metadata.clean()
