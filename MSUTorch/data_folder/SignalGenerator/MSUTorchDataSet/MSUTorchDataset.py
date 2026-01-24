@@ -21,7 +21,7 @@ class Modulation:
 #from tqdm.notebook import tqdm
 #from torchsig.signals.signal_lists import TorchSigSignalLists
 #from torchsig.datasets.datasets import StaticTorchSigDataset
-from MorganStateTorchSig.MSUTorch.generate_signal.group_example.MSUTorchDataset import Data_Options
+from MSUTorch.data_folder.SignalGenerator.MSUTorchDataSet.MSUTorchData_set import Data_Options
 
 class MSUTorchMetaData:
     def __init__(self,num_iq_samples_dataset, fft_size, num_signals_min, num_signals_max, snr_db_min, snr_db_max, class_list):
