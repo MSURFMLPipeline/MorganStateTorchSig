@@ -1,4 +1,4 @@
- def writing_YOLO_Noise_Training_Dataset(self):
+def writing_YOLO_Noise_Training_Dataset(self):
 
         for i, (train_noise_data, train_noise_labels) in tqdm(
             enumerate(self.noise_training_static_dataset),
@@ -36,9 +36,9 @@
                     l = train_noise_labels
                     f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
 
-    print("\nYOLO Training Noise Dataset Generation Complete.")
+print("\nYOLO Training Noise Dataset Generation Complete.")
 
-    def writing_YOLO_Noise_Validation_Dataset(self):
+def writing_YOLO_Noise_Validation_Dataset(self):
 
         for i, (validation_noise_data, validation_noise_labels) in tqdm(
             enumerate(self.noise_validation_static_dataset),
@@ -76,9 +76,9 @@
                     l = validation_noise_labels
                     f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
 
-    print("\nYOLO Validation Noise Dataset Generation Complete.")
+print("\nYOLO Validation Noise Dataset Generation Complete.")
 
-    def writing_YOLO_Noise_Testing_Dataset(self):
+def writing_YOLO_Noise_Testing_Dataset(self):
 
         for i, (test_noise_data, test_noise_labels) in tqdm(
             enumerate(self.noise_testing_static_dataset),
@@ -116,6 +116,6 @@
                     l = test_noise_labels
                     f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
 
-    print("\nYOLO Testing Noise Dataset Generation Complete.")
+print("\nYOLO Testing Noise Dataset Generation Complete.")
     
     
