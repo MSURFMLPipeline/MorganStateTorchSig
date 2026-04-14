@@ -1,19 +1,17 @@
 dataset:
-  mode: emi  #clean | emi+clean | emi
+  mode: emi+clean  #clean | emi+clean | emi
   root: "SavedDataSets"
   num_iq_samples_dataset: 16384
   fft_size: 256
   sample_rate: 100000
-  num_signals_min: 1
-  num_signals_max: 3
   seed: 123456789
-  signal_center_freq_min: -0.4
-  signal_center_freq_max: 0.4
-  signal_duration_in_samples_min: 8192 #Min range is great for spectrum analysis + EMI research
+  signal_center_freq_min: -0.3
+  signal_center_freq_max: 0.3
+  signal_duration_in_samples_min: 12288 #Min range is great for spectrum analysis + EMI research
   signal_duration_in_samples_max: 16384 #Max range is great for spectrum analysis + EMI research
-  signal_bandwidth_freq_min: -0.4
-  signal_bandwidth_freq_max: 0.4
-  signal_bandwidth_min: 6103
+  signal_bandwidth_freq_min: -0.3
+  signal_bandwidth_freq_max: 0.3
+  signal_bandwidth_min: 20000 
   signal_bandwidth_max: 100000
 
 class_list:
@@ -35,18 +33,48 @@ class_list:
     - 2gmsk
     - 4gmsk
 
+  emi+clean:
+    clean:
+      - ook
+      - 4ask
+      - 16ask
+      - bpsk
+      - qpsk
+      - 2fsk
+      - 4fsk
+      - 2gfsk
+      - 4gfsk
+      - 2msk
+      - 4msk
+      - 2gmsk
+      - 4gmsk
+    emi:
+      - tone
+
+num_signals:
+  clean:
+    num_signals_min: 1
+    num_signals_max: 3
+  emi+clean:
+    num_signals_min: 5
+    num_signals_max: 25
+  emi:
+    num_signals_min: 0
+    num_signals_max: 20
+
 snr_db:
   clean:
     snr_db_min: 10
     snr_db_max: 30
-
-  emi+clean:
-    snr_db_min: 0
-    snr_db_max: 10
-
+  
   emi:
     snr_db_min: 0
     snr_db_max: 20
+  
+  emi+clean:
+      snr_db_min: 5
+      snr_db_max: 25
+  
 
 noise_power: -30
 dataset_length: 50
