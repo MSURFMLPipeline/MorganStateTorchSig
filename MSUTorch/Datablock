@@ -1,0 +1,1089 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from ultralytics import YOLO
+from tqdm import tqdm
+from torchsig.datasets.dataset_metadata import DatasetMetadata
+from torchsig.datasets.datasets import (TorchSigIterableDataset,StaticTorchSigDataset)
+from torchsig.transforms.transforms import Spectrogram
+from torchsig.signals.builders.tone import ToneSignalBuilder
+from torchsig.transforms.transforms import AWGN
+from torchsig.utils.data_loading import WorkerSeedingDataLoader
+from torchsig.transforms.metadata_transforms import YOLOLabel
+from torchsig.utils.writer import DatasetCreator, default_collate_fn
+from torchsig.datasets.dataset_metadata import load_dataset_metadata
+from torchsig.signals.signal_lists import TorchSigSignalLists
+from torchsig.utils.random import Seedable
+from torchsig.transforms.impairments import Impairments
+from torchsig.transforms.functional import spectrogram
+from torchsig.utils.defaults import default_dataset
+from torch.utils.data import DataLoader
+import torch.nn as nn
+from torchinfo import summary
+
+from pathlib import Path
+import cv2
+import shutil
+import random
+from PIL import Image
+
+from abc import ABC
+import torch
+import yaml
+import os
+
+#---------------
+#Loading YAMLs
+#---------------
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+ds = config["dataset"]
+train = config["training"]
+validation = config["validation"]
+
+
+class_lists=config["class_list"]
+snr=config["snr_db"]
+noise=config["noise_power"]
+num_samples=config["num_samples"]
+root = ds["root"]
+os.makedirs(root,  exist_ok=True)
+mode=ds["mode"]
+root = os.path.join(ds["root"], mode)
+
+with open("yolo_Detector_2.yaml","r") as f:
+    detector = yaml.safe_load(f)
+dt=detector["names"]
+paths=detector["paths"]
+
+
+with open("yolo_Detector.yaml","r") as f:
+    detector = yaml.safe_load(f)
+dt=detector["names"]
+paths=detector["paths"]
+disk_root=paths["root"]
+
+
+#--------------------------
+#Data Block
+#--------------------------
+class MSUDataBlock: #Initializing metadata
+    def __init__ (self):
+        pass
+#----------------------------------------------------------------------------------------------------
+#Trying to make functions that make rules for the different data options (EMI, Clean, EMI+Clean)
+#This class passes the MetaData through and categorizes it into Clean, EMI, or Clean+EMI
+#-----------------------------------------------------------------------------------------------------
+    def Dataset_Mode(self):
+        print(f"Dataset mode enforced: {mode}")
+        print(f"Dataset root set to: {root}")
+
+    def selection_conditions(self):
+        if mode=="clean":
+            self.snr_db_min=snr[mode]["snr_db_min"]
+            self.snr_db_max=snr[mode]["snr_db_max"]
+            self.class_list=class_lists[mode]
+        elif mode=="emi":
+            self.snr_db_min=snr[mode]["snr_db_min"]
+            self.snr_db_max=snr[mode]["snr_db_max"]
+            self.class_list=class_lists[mode]
+        elif mode=="emi+clean":
+            self.snr_db_min=snr[mode]["snr_db_min"]
+            self.snr_db_max=snr[mode]["snr_db_max"]
+            self.class_list=class_lists[mode]
+        else:
+            raise ValueError(f"The mode is not known: {mode}")
+
+
+    def update_return_metadata(self): #Saving values within the Imported TorchSig Class
+        self.dataset_metadata=DatasetMetadata(
+            num_iq_samples_dataset=ds["num_iq_samples_dataset"],
+            num_signals_min=ds["num_signals_min"],
+            fft_size=ds["fft_size"],
+            num_signals_max=ds["num_signals_max"],
+            snr_db_min=self.snr_db_min,
+            snr_db_max=self.snr_db_max,
+            class_list=self.class_list,
+            sample_rate=ds["sample_rate"],
+            signal_bandwidth_freq_max=ds["signal_bandwidth_freq_max"],
+            signal_bandwidth_freq_min=ds["signal_bandwidth_freq_min"],
+            signal_center_freq_min=ds["signal_center_freq_min"],
+            signal_center_freq_max=ds["signal_center_freq_max"],
+            signal_duration_in_samples_min=ds["signal_duration_in_samples_min"],
+            singal_duration_in_samples_max=ds["signal_duration_in_samples_max"],
+            signal_bandwidth_max=ds["signal_bandwidth_max"],
+            signal_bandwidth_min=ds["signal_bandwidth_min"],
+            channel_freq_offset=0,
+            phase_noise=0,
+            timing_offset=0,
+            fading=False,
+        )
+        print(f"Here are the {mode} metadata values that you entered for {self.dataset_metadata}:")
+        return self.dataset_metadata #Returning Metadata
+
+     #EMI + Noise Singals
+    def metadata_tone(self):
+          self.tone_metadata=DatasetMetadata(
+            num_iq_samples_dataset=ds["num_iq_samples_dataset"],
+            num_signals_min=ds["num_signals_min"],
+            fft_size=ds["fft_size"],
+            num_signals_max=ds["num_signals_max"],
+            snr_db_min=self.snr_db_min,
+            signal_bandwidth_max=ds["signal_bandwidth_max"],
+            signal_bandwidth_min=ds["signal_bandwidth_min"],
+            snr_db_max=self.snr_db_max,
+            class_list=self.class_list,
+            signal_bandwidth_freq_max=ds["signal_bandwidth_freq_max"],
+            signal_bandwidth_freq_min=ds["signal_bandwidth_freq_min"],
+            sample_rate=ds["sample_rate"],
+            signal_center_freq_min=ds["signal_center_freq_min"],
+            signal_center_freq_max=ds["signal_center_freq_max"],
+            signal_duration_in_samples_min=ds["signal_duration_in_samples_min"],
+            singal_duration_in_samples_max=ds["signal_duration_in_samples_max"],
+            #signal_generators=["tone"],
+        )
+          print(f"Here are the {mode} metadata values that you entered for {self.tone_metadata}:")
+          return self.tone_metadata #Returning Metadata
+
+        #self.builder=ToneSignalBuilder(
+            # dataset_metadata=self.dataset_metadata,
+           #  class_name='tone',
+          #   signal_duration_in_samples_min=ds["signal_duration_in_samples_min"],
+         #    signal_duration_in_samples_max=ds["signal_duration_in_samples_max"]
+        #)
+    
+    def AWGN_noise_power(self):
+        #Applying AWGN to clean signal
+        #Enter desired power for noise(ranging from -30 db to 0 dB) in the config.yaml file
+        self.noise=AWGN(noise_power_db=noise,bool=True)
+        return self.noise
+    
+    #def tone_noise_signal(self):
+     #   self.noisy_tone_signal=self.noise(self.builder)
+        
+    def signal_impairments(self):
+        self.impairments=Impairments(2) #Wireless Environment                                                
+        self.burst_impairments=self.impairments.signal_transforms
+        self.whole_signal_impairments=self.impairments.dataset_transforms
+        self.burst_impairments,self.whole_signal_impairments
+        
+    def signal_training_impaired_dataset(self):
+        self.training_impaired_dataset = TorchSigIterableDataset(
+            #dataset_metadata=self.dataset_metadata,
+            dataset_metadata=self.tone_metadata,
+            transforms=[self.whole_signal_impairments,self.noise],
+            component_transforms=[self.burst_impairments])
+    
+    def signal_testing_impaired_dataset(self):
+        self.testing_impaired_dataset= TorchSigIterableDataset(
+            dataset_metadata=self.tone_metadata,
+            transforms=[self.whole_signal_impairments,self.noise],
+            component_transforms=[self.burst_impairments])
+        
+    def signal_validation_impaired_dataset(self):
+        self.validation_impaired_dataset= TorchSigIterableDataset(
+            dataset_metadata=self.tone_metadata,
+            transforms=[self.whole_signal_impairments,self.noise],
+            component_transforms=[self.burst_impairments])
+     
+    def creating_noisy_validation_dataloader(self):
+        self.noisy_validation_dataloader=WorkerSeedingDataLoader(self.validation_impaired_dataset,collate_fn=lambda x:x)
+        self.noisy_validation_dataloader.seed(ds["seed"])
+    
+    def creating_noisy_testing_dataloader(self):
+        self.noisy_testing_dataloader=WorkerSeedingDataLoader(self.testing_impaired_dataset,collate_fn=lambda x:x)
+        self.noisy_testing_dataloader.seed(ds["seed"])
+    
+    def creating_noisy_training_dataloader(self):
+        self.noisy_training_dataloader=WorkerSeedingDataLoader(self.training_impaired_dataset,collate_fn=lambda x:x)
+        self.noisy_training_dataloader.seed(ds["seed"])
+    
+    def writing_noisy_validation_dataset(self):
+        #writes the workerseedingdataloader dataset to disk
+        self.num_noisy_val_samples = len(self.class_list) * 500 # roughly 50 samples per class
+        print(f"The number of noisy training samples is {self.num_noisy_val_samples}")
+
+        dc = DatasetCreator(
+        dataloader=self.noisy_validation_dataloader,
+        root = f"{root}/noise_validation",
+        overwrite=True,
+        dataset_length=self.num_noisy_val_samples)
+
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:",f"{root}/emi/noise_validation")
+    
+    def writing_noisy_testing_dataset(self):
+        #writes the workerseedingdataloader dataset to disk
+        self.num_noisy_test_samples = len(self.class_list) * 400 # roughly 50 samples per class
+        print(f"The number of noisy training samples is {self.num_noisy_test_samples}")
+
+        dc = DatasetCreator(
+        dataloader=self.noisy_testing_dataloader,
+        root = f"{root}/noise_testing",
+        overwrite=True,
+        dataset_length=self.num_noisy_test_samples)
+
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:",f"{root}/noise_testing")
+        
+    def writing_noisy_training_dataset(self):
+        #writes the workerseedingdataloader dataset to disk
+        self.num_noisy_train_samples = len(self.class_list) * 100 # roughly 50 samples per class
+        print(f"The number of noisy training samples is {self.num_noisy_train_samples}")
+
+        dc = DatasetCreator(
+        dataloader=self.noisy_training_dataloader,
+        root = f"{root}/noise_training",
+        overwrite=True,
+        dataset_length=self.num_noisy_train_samples)
+
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:",f"{root}/noise_training")
+    
+    def reading_noisy_training_dataset(self):
+        #Reads the dataset from disk
+        self.noise_training_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/noise_training",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"]
+            )
+        print("\nLoaded noise training static dataset length:", len(self.noise_training_static_dataset))
+        print(self.noise_training_static_dataset)
+    
+    def reading_noisy_testing_dataset(self):
+        #Reads the dataset from disk
+        self.noise_testing_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/noise_testing",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"],
+            )
+        print("\nLoaded noise testing static dataset length:", len(self.noise_testing_static_dataset))
+        print(self.noise_testing_static_dataset)
+        
+    def reading_noisy_validation_dataset(self):
+        #Reads the dataset from disk
+        self.noise_validation_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/noise_validation",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"],
+            )
+        print("\nLoaded noise testing static dataset length:", len(self.noise_validation_static_dataset))
+        print(self.noise_validation_static_dataset)
+
+    def inspecting_noisy_validation_batch(self):
+        self.val_noise_spectrograms, self.val_noise_labels = self.noise_training_static_dataset[1]
+        print("\n---Test Spectrogram INFO ---")
+        print("\nTest Spectrogram batch shape:", self.val_noise_spectrograms.shape)
+        print(f"\nData type: {self.val_noise_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.val_noise_labels)
+        print("Spectrogram (Real) I Samples:", self.val_noise_spectrograms.real)
+        print("Spectrogram (Imaginary) Q Samples:", self.val_noise_spectrograms.imag)
+
+    def inspecting_noisy_testing_batch(self):
+        self.test_noise_spectrograms, self.test_noise_labels = self.noise_testing_static_dataset[1]
+        print("\n---Test Spectrogram INFO ---")
+        print("\nTest Spectrogram batch shape:", self.test_noise_spectrograms.shape)
+        print(f"\nData type: {self.test_noise_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.test_noise_labels)
+        print("Spectrogram (Real) I Samples:", self.test_noise_spectrograms.real)
+        print("Spectrogram (Imaginary) Q Samples:", self.test_noise_spectrograms.imag)
+        
+    def inspecting_noisy_training_batch(self):
+        self.train_noise_spectrograms, self.train_noise_labels = self.noise_training_static_dataset[1]
+        print("\n---Test Spectrogram INFO ---")
+        print("\nTest Spectrogram batch shape:", self.train_noise_spectrograms.shape)
+        print(f"\nData type: {self.train_noise_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.train_noise_labels)
+        print("Spectrogram (Real) I Samples:", self.train_noise_spectrograms.real)
+        print("Spectrogram (Imaginary) Q Samples:", self.train_noise_spectrograms.imag)
+   
+    def noisy_spectrogram_directories(self):
+        os.makedirs(disk_root, exist_ok=True)
+        self.noise_train_label_dir = f"{disk_root}/labels/emi/train"
+        self.noise_train_image_dir = f"{disk_root}/images/emi/train"
+        os.makedirs(self.noise_train_label_dir, exist_ok=True)
+        os.makedirs(self.noise_train_image_dir, exist_ok=True)
+
+        self.noise_val_label_dir = f"{disk_root}/labels/emi/val"
+        self.noise_val_image_dir = f"{disk_root}/images/emi/val"
+        os.makedirs(self.noise_val_label_dir, exist_ok=True)
+        os.makedirs(self.noise_val_image_dir, exist_ok=True)
+
+        self.noise_test_label_dir = f"{disk_root}/labels/emi/test"
+        self.noise_test_image_dir = f"{disk_root}/images/emi/test"
+        os.makedirs(self.noise_test_label_dir, exist_ok=True)
+        os.makedirs(self.noise_test_image_dir, exist_ok=True)
+
+    def writing_YOLO_Noise_Training_Dataset(self):
+
+        for i, (train_noise_data, train_noise_labels) in tqdm(
+            enumerate(self.noise_training_static_dataset),
+            total=len(self.noise_training_static_dataset),
+            desc="\nWriting YOLO Test Dataset"):
+
+            file_base = str(i).zfill(10)
+            train_noise_label_file = f"{self.noise_train_label_dir}/{file_base}.txt"
+            train_noise_img_file = f"{self.noise_train_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            train_noise_img = train_noise_data.detach().numpy() if hasattr(train_noise_data, 'detach') else np.array(train_noise_data)
+            train_noise_img = np.squeeze(train_noise_img).astype(np.float32)
+            train_noise_img = np.abs(train_noise_img)
+            train_noise_img = train_noise_img - train_noise_img.min()
+            train_noise_img = np.maximum(train_noise_img, 1e-12)
+            train_noise_img = np.nan_to_num(train_noise_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if train_noise_img.max() > 0:
+                train_noise_img = train_noise_img / train_noise_img.max()
+                train_noise_img = (train_noise_img * 255).astype(np.uint8)
+                train_noise_img = np.stack([train_noise_img, train_noise_img, train_noise_img], axis=-1)
+                Image.fromarray(train_noise_img).save(train_noise_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+            with open(train_noise_label_file, "w") as f:
+                if isinstance(train_noise_labels[0], (list, tuple, np.ndarray)):
+                    for l in train_noise_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = train_noise_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+
+    print("\nYOLO Training Noise Dataset Generation Complete.")
+
+    def writing_YOLO_Noise_Validation_Dataset(self):
+
+        for i, (validation_noise_data, validation_noise_labels) in tqdm(
+            enumerate(self.noise_validation_static_dataset),
+            total=len(self.noise_validation_static_dataset),
+            desc="\nWriting YOLO Test Dataset"):
+
+            file_base = str(i).zfill(10)
+            val_noise_label_file = f"{self.noise_val_label_dir}/{file_base}.txt"
+            val_noise_img_file = f"{self.noise_val_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            val_noise_img = validation_noise_data.detach().numpy() if hasattr(validation_noise_data, 'detach') else np.array(validation_noise_data)
+            val_noise_img = np.squeeze(val_noise_img).astype(np.float32)
+            val_noise_img = np.abs(val_noise_img)
+            val_noise_img = val_noise_img - val_noise_img.min()
+            val_noise_img = np.maximum(val_noise_img, 1e-12)
+            val_noise_img = np.nan_to_num(val_noise_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if val_noise_img.max() > 0:
+                val_noise_img = val_noise_img / val_noise_img.max()
+                val_noise_img = (val_noise_img * 255).astype(np.uint8)
+                val_noise_img = np.stack([val_noise_img, val_noise_img, val_noise_img], axis=-1)
+                Image.fromarray(val_noise_img).save(val_noise_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+            with open(val_noise_label_file, "w") as f:
+                if isinstance(validation_noise_labels[0], (list, tuple, np.ndarray)):
+                    for l in validation_noise_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = validation_noise_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+
+    print("\nYOLO Validation Noise Dataset Generation Complete.")
+
+    def writing_YOLO_Noise_Testing_Dataset(self):
+
+        for i, (test_noise_data, test_noise_labels) in tqdm(
+            enumerate(self.noise_testing_static_dataset),
+            total=len(self.noise_testing_static_dataset),
+            desc="\nWriting YOLO Test Dataset"):
+
+            file_base = str(i).zfill(10)
+            test_noise_label_file = f"{self.noise_test_label_dir}/{file_base}.txt"
+            test_noise_img_file = f"{self.noise_test_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            test_noise_img = test_noise_data.detach().numpy() if hasattr(test_noise_data, 'detach') else np.array(test_noise_data)
+            test_noise_img = np.squeeze(test_noise_img).astype(np.float32)
+            test_noise_img = np.abs(test_noise_img)
+            test_noise_img = test_noise_img - test_noise_img.min()
+            test_noise_img = np.maximum(test_noise_img, 1e-12)
+            test_noise_img = np.nan_to_num(test_noise_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if test_noise_img.max() > 0:
+                test_noise_img = test_noise_img / test_noise_img.max()
+                test_noise_img = (test_noise_img * 255).astype(np.uint8)
+                test_noise_img = np.stack([test_noise_img, test_noise_img, test_noise_img], axis=-1)
+                Image.fromarray(test_noise_img).save(test_noise_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+            with open(test_noise_label_file, "w") as f:
+                if isinstance(test_noise_labels[0], (list, tuple, np.ndarray)):
+                    for l in test_noise_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = test_noise_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+
+    print("\nYOLO Testing Noise Dataset Generation Complete.")
+    
+    
+    
+#-------------------------------------------------------------------------------------------------
+    #Spliting data into testing and validation (Finished)
+    def training_dataset(self):
+        self.train_dataset = TorchSigIterableDataset(self.dataset_metadata,seed=train["seed"])
+        #print(self.train_samples)
+
+    def validation_dataset(self):
+        self.val_dataset = TorchSigIterableDataset(self.dataset_metadata,seed=validation["seed"])
+
+    def testing_dataset(self):
+        self.test_dataset=TorchSigIterableDataset(self.dataset_metadata,seed=test["seed"])
+
+    def creating_testing_dataloader(self):
+        self.test_dataloader=WorkerSeedingDataLoader(self.test_dataset,batch_size=test["batch_size"], collate_fn=lambda x:x)
+        self.test_dataloader.seed(ds["seed"])
+
+    def creating_training_dataloader(self):
+        #Contains the dataset that we created for training data
+
+        self.train_dataloader = WorkerSeedingDataLoader(self.train_dataset, batch_size=train["batch_size"], collate_fn=lambda x:x)
+        self.train_dataloader.seed(ds["seed"])
+
+    def creating_validation_dataloader(self):
+        self.val_dataloader = WorkerSeedingDataLoader(self.val_dataset, batch_size=validation["batch_size"], collate_fn = lambda x: x)
+        self.val_dataloader.seed(ds["seed"])
+
+    def writing_testing_dataset(self):
+        #writes the workerseedingdataloader dataset to disk
+        self.num_samples_test = len(ds["class_list"]) * 500 # roughly 50 samples per class
+        print(f"The number of testing samples is {self.num_samples_test}")
+
+        dc = DatasetCreator(
+        dataloader=self.test_dataloader,
+        root = f"{root}/test",
+        overwrite=True,
+        dataset_length=self.num_samples_test)
+
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:", f"{root}/test")
+
+    def writing_training_dataset(self):
+
+        #writes the workerseedingdataloader dataset to disk
+        self.num_samples_train = len(ds["class_list"]) * 400  # roughly 40 samples per class
+        print(f"The number of training samples is {self.num_samples_train}")
+
+        dc = DatasetCreator(
+        dataloader=self.train_dataloader,
+        root = f"{root}/train",
+        overwrite=True,
+        dataset_length=self.num_samples_train)
+
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:",f"{root}/train")
+
+    def writing_validation_dataset(self):
+        self.num_samples_val = len(ds["class_list"]) * 100  #roughly 10 samples per class
+        print(f"The number of validation samples is {self.num_samples_val}")
+
+        dc = DatasetCreator(
+        dataloader=self.val_dataloader,
+        root = f"{root}/val",
+        overwrite=True,
+        dataset_length=self.num_samples_val)
+
+        print("\nWriting dataset to disk...")
+        dc.create()
+        print("Dataset written to:", f"{root}/val")
+
+    def reading_testing_dataset(self):
+           #Reads the dataset from disk
+        self.testing_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/test",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"]
+            )
+        print("\nLoaded testing static dataset length:", len(self.testing_static_dataset))
+        print(self.testing_static_dataset)
+
+    def reading_training_dataset(self):
+        #Reads the dataset from disk
+        self.training_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/train",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"]
+            )
+        print("\nLoaded training static dataset length:", len(self.training_static_dataset))
+        print(self.training_static_dataset)
+
+    def reading_validation_dataset(self):
+        #Reads the dataset from disk
+        self.validation_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/val",
+            transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
+            target_labels=["yolo_label"]
+            )
+
+        print("\nLoaded validation static dataset length:", len(self.validation_static_dataset))
+        print(self.validation_static_dataset)
+
+    def inspecting_test_batch(self):
+        self.test_spectrograms, self.test_labels = self.testing_static_dataset[1]
+        print("\n---Test Spectrogram INFO ---")
+        print("\nTest Spectrogram batch shape:", self.test_spectrograms.shape)
+        print(f"\nData type: {self.test_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.test_labels)
+        #print("Spectrogram (Real) I Samples:", self.test_spectrograms.real)
+        #print("Spectrogram (Imaginary) Q Samples:", self.test_spectrograms.imag)
+
+    def inspecting_validation_batch(self):
+        self.spectrograms, self.val_labels = self.validation_static_dataset[1]
+        print("\n---Validation Spectrogram INFO ---")
+        print("\nValidation Spectrogram batch shape:", self.spectrograms.shape)
+        print(f"\nData type: {self.spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.val_labels)
+        #print("Spectrogram (Real) I Samples:", self.spectrograms.real)
+        #print("Spectrogram (Imaginary) Q Samples:", self.spectrograms.imag)
+    def inspecting_training_batch(self):
+        self.train_spec_data, self.labels = self.training_static_dataset[1]
+        print("\n---Training Spectrogram INFO ---")
+        print("\nTraining Spectrogram batch shape:", self.train_spec_data.shape)
+        print(f"\nData type: {self.train_spec_data.dtype} ")
+        print(f"\nTraining YOlO Labels (Class Index, X center, Y center, Width, Height):", self.labels)
+        #print("Spectrogram (Real) I Samples:", self.train_spec_data.real)
+        #print("Spectrogram (Imaginary) Q Samples:", self.train_spec_data.imag)
+
+    def multiple_testing_spectrogram_plots(self):
+
+        plt.suptitle("Testing Spectrogram Samples", fontsize=16)
+        plt.figure(figsize=(15,9))
+
+        testl_spec1, testl_labels1 = self.testing_static_dataset[0]
+        testl_spec2, testl_label2= self.testing_static_dataset[1]
+        testl_spec3, testl_label3 = self.testing_static_dataset[2]
+        testl_spec4, testl_label4= self.testing_static_dataset[3]
+        testl_spec5, testl_label5 = self.testing_static_dataset[4]
+
+        plt.subplot(3,3,1)
+        plt.pcolormesh(testl_spec1, shading="auto")
+        plt.title("Sample 1")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,3)
+        plt.pcolormesh(testl_spec2, shading="auto")
+        plt.title("Sample 2")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,5)
+        plt.pcolormesh(testl_spec3, shading="auto")
+        plt.title("Sample 3")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,7)
+        plt.pcolormesh(testl_spec4, shading="auto")
+        plt.title("Sample 4")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.subplot(3,3,9)
+        plt.pcolormesh(testl_spec5, shading="auto")
+        plt.title("Sample 5")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.tight_layout()
+        plt.show()
+
+
+    def multiple_validation_spectrogram_plots(self):
+        plt.suptitle("Validation Spectrogram Samples", fontsize=16)
+        plt.figure(figsize=(15,9))
+
+        val_spec1, val_labels1 = self.validation_static_dataset[0]
+        val_spec2, val_label2 = self.validation_static_dataset[1]
+        val_spec3, val_label3 = self.validation_static_dataset[2]
+        val_spec4, val_label4 = self.validation_static_dataset[3]
+        val_spec5, val_label5 = self.validation_static_dataset[4]
+
+        plt.subplot(3,3,1)
+        plt.pcolormesh(val_spec1, shading="auto")
+        plt.title("Sample 1")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,3)
+        plt.pcolormesh(val_spec2, shading="auto")
+        plt.title("Sample 2")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,5)
+        plt.pcolormesh(val_spec3, shading="auto")
+        plt.title("Sample 3")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,7)
+        plt.pcolormesh(val_spec4, shading="auto")
+        plt.title("Sample 4")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.subplot(3,3,9)
+        plt.pcolormesh(val_spec5, shading="auto")
+        plt.title("Sample 5")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.tight_layout()
+        plt.show()
+
+    def multiple_training_spectrogram_plots(self):
+
+        plt.suptitle("Training Spectrogram Samples", fontsize=16)
+        plt.figure(figsize=(15,9))
+
+        spec1, label1 = self.training_static_dataset[0]
+        spec2, label2 = self.training_static_dataset[1]
+        spec3, label3 = self.training_static_dataset[2]
+        spec4, label4 = self.training_static_dataset[3]
+        spec5, label5 = self.training_static_dataset[4]
+
+        plt.subplot(3,3,1)
+        plt.pcolormesh(spec1, shading="auto")
+        plt.title("Sample 1")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,3)
+        plt.pcolormesh(spec2, shading="auto")
+        plt.title("Sample 2")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+
+        plt.subplot(3,3,5)
+        plt.pcolormesh(spec3, shading="auto")
+        plt.title("Sample 3")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.subplot(3,3,7)
+        plt.pcolormesh(spec4, shading="auto")
+        plt.title("Sample 4")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.subplot(3,3,9)
+        plt.pcolormesh(spec5, shading="auto")
+        plt.title("Sample 5")
+        plt.xlabel("Time Bin")
+        plt.ylabel("Frequency Bin")
+        cbar=plt.colorbar()
+        cbar.set_label("Intensity")
+
+        plt.tight_layout()
+        plt.show()
+
+    def spectrogram_image_directories(self):
+        os.makedirs(disk_root, exist_ok=True)
+        self.label_dir = f"{disk_root}/labels/clean/train"
+        self.image_dir = f"{disk_root}/images/clean/train"
+        os.makedirs(self.label_dir, exist_ok=True)
+        os.makedirs(self.image_dir, exist_ok=True)
+
+
+        self.val_label_dir = f"{disk_root}/labels/clean/val"
+        self.val_image_dir = f"{disk_root}/images/clean/val"
+        os.makedirs(self.val_label_dir, exist_ok=True)
+        os.makedirs(self.val_image_dir, exist_ok=True)
+
+        self.test_label_dir = f"{disk_root}/labels/clean/test"
+        self.test_image_dir = f"{disk_root}/images/clean/test"
+        os.makedirs(self.test_label_dir, exist_ok=True)
+        os.makedirs(self.test_image_dir, exist_ok=True)
+
+    def writing_YOLO_Testing_Dataset(self):
+
+        for i, (test_data, test_spec_labels) in tqdm(
+            enumerate(self.testing_static_dataset),
+            total=len(self.testing_static_dataset),
+            desc="\nWriting YOLO Test Dataset"):
+
+            file_base = str(i).zfill(10)
+            test_label_file = f"{self.test_label_dir}/{file_base}.txt"
+            test_img_file = f"{self.test_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            test_img = test_data.detach().numpy() if hasattr(test_data, 'detach') else np.array(test_data)
+            test_img = np.squeeze(test_img).astype(np.float32)
+            test_img = np.abs(test_img)
+            test_img = test_img - test_img.min()
+            test_img = np.maximum(test_img, 1e-12)
+            test_img = np.nan_to_num(test_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if test_img.max() > 0:
+                test_img = test_img / test_img.max()
+                test_img = (test_img * 255).astype(np.uint8)
+                test_img = np.stack([test_img, test_img, test_img], axis=-1)
+                Image.fromarray(test_img).save(test_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+            with open(test_label_file, "w") as f:
+                if isinstance(test_spec_labels[0], (list, tuple, np.ndarray)):
+                    for l in test_spec_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = test_spec_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+
+    print("\nYOLO Test Dataset Generation Complete.")
+
+    def writing_YOLO_Validation_Dataset(self):
+        for i, (val_data, val_spec_labels) in tqdm(
+            enumerate(self.validation_static_dataset),
+            total=len(self.validation_static_dataset),
+            desc="\nWriting YOLO Validation Dataset"):
+
+            file_base=str(i).zfill(10)
+
+            val_label_file = f"{self.val_label_dir}/{file_base}.txt"
+            val_img_file = f"{self.val_image_dir}/{file_base}.png"
+
+        # Convert spectrogram to image
+            val_img = val_data.detach().numpy() if hasattr(val_data, 'detach') else np.array(val_data)
+            val_img = np.squeeze(val_img).astype(np.float32)
+            val_img = np.abs(val_img)
+            val_img = val_img - val_img.min()
+            val_img = np.maximum(val_img, 1e-12)
+            val_img = np.nan_to_num(val_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if val_img.max() > 0:
+                val_img = val_img / val_img.max()
+                val_img = (val_img * 255).astype(np.uint8)
+                val_img = np.stack([val_img, val_img, val_img], axis=-1)
+                Image.fromarray(val_img).save(val_img_file)
+
+        # Write YOLO label
+            with open(val_label_file, "w") as f:
+                if isinstance(val_spec_labels[0], (list, tuple, np.ndarray)):
+                    for l in val_spec_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = val_spec_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+
+    print("\nYOLO Validation Dataset Generation Complete.")
+
+    def writing_YOLO_Training_Dataset(self):
+
+# tqdm adds progress bars so that we can see the static training dataset being written as labels and images"
+
+        for i, (data, spec_labels) in tqdm(
+            enumerate(self.training_static_dataset),
+            total=len(self.training_static_dataset),
+            desc="\nWriting YOLO Training Dataset"):
+            
+            file_base = str(i).zfill(10)
+            label_file = f"{self.label_dir}/{file_base}.txt"
+            img_file = f"{self.image_dir}/{file_base}.png"
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            img = data.detach().numpy() if hasattr(data, 'detach') else np.array(data)
+            img = np.squeeze(img).astype(np.float32)
+            img = np.abs(img)
+            img = img - img.min()
+            img = np.maximum(img, 1e-12)
+            img = np.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
+            
+            if img.max() > 0:
+                img = img / img.max()
+                img = (img * 255).astype(np.uint8)
+                img = np.stack([img, img, img], axis=-1)
+                Image.fromarray(img).save(img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+            with open(label_file, "w") as f:
+                if isinstance(spec_labels[0], (list, tuple, np.ndarray)):
+                    for l in spec_labels:
+                        f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                else:
+                    l = spec_labels
+                    f.write(f"{int(l[0])} {l[1]} {l[2]} {l[3]} {l[4]}\n")
+                        
+        print("\nYOLO Training Dataset Generation Complete.")
+
+
+#-----------------------------------------------------------------
+#MSU ML Block
+#-----------------------------------------------------------------
+
+class MSUTorch_YOLO_Model(MSUDataBlock):
+    def __init__(self):
+        super().__init__()
+
+    def YOLO_Model_training(self):
+        print("Starting YOLO training")
+        self.model = YOLO("yolov8n.pt")
+        self.model.train(
+        data="/home/zismi2/Desktop/yolo_Detector.yaml",
+        epochs=train["epochs"],
+        imgsz=224,
+        batch=train["batch_size"],
+        )
+        self.save_dir = str(self.model.trainer.save_dir)
+        print("Training finished")
+        
+    def YOLO_Model_Noise_training(self):
+        print("Starting YOLO training")
+        self.noise_model = YOLO("yolov8n.pt")
+        self.noise_model.train(
+        data="/home/zismi2/Desktop/yolo_Detector_2.yaml",
+        epochs=train["epochs"],
+        imgsz=224,
+        batch=train["batch_size"],
+        )
+        self.noise_save_dir = str(self.noise_model.trainer.save_dir) 
+        print("Training finished")
+     
+    def YOLO_Noise_Model_validation(self):
+
+        print("Starting YOLO validation")
+        metrics = self.noise_model.val()
+        print(f"mAP50: {metrics.box.map50}")
+        print(f"mAP50-95: {metrics.box.map}")
+        print(f"Precision: {metrics.box.mp}")
+        print(f"Recall: {metrics.box.mr}")
+        print("Validation finished")
+        
+    def export_YOLO_Noise_model(self):
+        YOLO_export = self.model.export(format='onnx', opset=18)  # export the model to ONNX format    
+    
+    
+    def YOLO_Model_validation(self):
+
+        print("Starting YOLO validation")
+        metrics = self.model.val()
+        print(f"mAP50: {metrics.box.map50}")
+        print(f"mAP50-95: {metrics.box.map}")
+        print(f"Precision: {metrics.box.mp}")
+        print(f"Recall: {metrics.box.mr}")
+        print("Validation finished")
+
+    def export_YOLO_model(self):
+        YOLO_export = self.model.export(format='onnx', opset=18)  # export the model to ONNX format
+    
+    def performance(self):
+        label_path= os.path.join(self.model.trainer.save_dir, "val_batch1_labels.jpg")
+        pred_path = os.path.join(self.model.trainer.save_dir, "val_batch1_pred.jpg")
+        
+        label = cv2.imread(label_path)
+        pred  = cv2.imread(pred_path)
+        
+        label = cv2.cvtColor(label, cv2.COLOR_BGR2RGB)
+        pred  = cv2.cvtColor(pred,  cv2.COLOR_BGR2RGB)
+
+        f, ax = plt.subplots(1, 2, figsize=(15, 9))
+        ax[0].imshow(label)
+        ax[0].set_title("Label")
+        ax[1].imshow(pred)
+        ax[1].set_title("Prediction")
+        plt.tight_layout()
+        plt.show()
+
+class MSUTorch_Eval(MSUTorch_YOLO_Model):
+    def __init__(self):
+        super().__init__()
+        
+    def load_model(self, model, save_dir):
+        self.model = model
+        self.save_dir = save_dir
+
+    def testing_model_predictions(self):
+        print("Switching to Model Evaluation Mode")
+        self.model.eval()
+        device = torch.device("cpu")
+        self.model.to(device) #Moving model to my device with the data
+        with torch.no_grad():
+        	data, class_index = self.testing_static_dataset[0]
+        	data = torch.from_numpy(data).to(device).unsqueeze(dim=0)
+        # have model predict data
+        # returns a probability the data is each signal class
+        	pred = self.model(data)
+        # print(pred) # if you want to see the list of probabilities
+
+        # choose the class with highest confidence
+        	predicted_class = torch.argmax(pred).cpu().numpy()
+        print(f"Predicted = {predicted_class} ({class_list[predicted_class]})")
+        print(f"Actual = {class_index} ({class_list[class_index]})")
+
+
+        label = cv2.imread(os.path.join(self.training_results.save_dir, "test_batch1_labels.jpg"))
+        pred = cv2.imread(os.path.join(self.training_results.save_dir, "test_batch1_pred.jpg"))
+
+        f, ax = plt.subplots(1, 2, figsize=(15, 9))
+        ax[0].imshow(label)
+        ax[0].set_title("Label")
+        ax[1].imshow(pred)
+        ax[1].set_title("Prediction")
+
+    def training_model_performance(self):
+        self.model_train = summary(self.model)
+
+        train_results_img = cv2.imread(os.path.join(self.model.trainer.save_dir, "train_results.png"))
+        plt.figure(figsize=(10, 20))
+        plt.imshow(train_results_img)
+        plt.show()
+
+
+    def testing_model_performance(self):
+        self.YOLO_Model_training_and_validation()
+        self.model_test = summary(self.model.test)
+
+        results_img = cv2.imread(os.path.join(self.model.trainer.save_dir, "test_results.png"))
+        plt.figure(figsize=(10, 20))
+        plt.imshow(results_img)
+        plt.show()
+#----------------------
+#Clean+EMI
+#--------------------
+#
+#--------------------
+#EMI (Completed) 
+#-------------------
+data=MSUDataBlock()
+data.Dataset_Mode()
+data.selection_conditions()
+data.metadata_tone()
+data.AWGN_noise_power()
+data.signal_impairments()
+data.signal_training_impaired_dataset()
+data.signal_testing_impaired_dataset()
+data.signal_validation_impaired_dataset()
+data.creating_noisy_validation_dataloader()
+data.creating_noisy_testing_dataloader()
+data.creating_noisy_training_dataloader()
+data.writing_noisy_testing_dataset()
+data.writing_noisy_validation_dataset()
+data.writing_noisy_training_dataset()
+data.reading_noisy_validation_dataset()
+data.reading_noisy_testing_dataset()
+data.reading_noisy_training_dataset()
+data.inspecting_noisy_training_batch()
+data.inspecting_noisy_testing_batch()
+data.inspecting_noisy_validation_batch()
+data.noisy_spectrogram_directories()
+data.writing_YOLO_Noise_Training_Dataset()
+data.writing_YOLO_Noise_Validation_Dataset()
+data.writing_YOLO_Noise_Testing_Dataset()
+ML=MSUTorch_YOLO_Model()
+ML.YOLO_Model_Noise_training()
+ML.YOLO_Noise_Model_validation()
+ML.export_YOLO_Noise_model()
+#--------------------
+#Clean+EMI
+
+
+
+#-------------------
+#Concatenation between Clean and EMI Pipeline
+#--------------------
+
+
+
+#--------------------
+#Clean Data Generation Pipeline (Completed)
+#--------------------
+
+#data=MSUDataBlock()
+#data.Dataset_Mode()
+#data.selection_conditions()
+#data.update_return_metadata()
+#data.training_dataset()
+#data.testing_dataset()
+#data.validation_dataset()
+#data.creating_testing_dataloader()
+#data.creating_training_dataloader()
+#data.creating_validation_dataloader()
+#data.writing_testing_dataset()
+#data.writing_training_dataset()
+#data.writing_validation_dataset()
+#data.reading_training_dataset()
+#data.reading_validation_dataset()
+#data.reading_testing_dataset()
+#data.inspecting_training_batch()
+#data.inspecting_test_batch()
+#data.inspecting_validation_batch()
+
+#data.multiple_testing_spectrogram_plots()
+#data.multiple_training_spectrogram_plots()
+#data.multiple_validation_spectrogram_plots()
+
+#data.spectrogram_image_directories()
+#data.writing_YOLO_Validation_Dataset()
+#data.writing_YOLO_Testing_Dataset()
+#data.writing_YOLO_Training_Dataset()
+
+#ML=MSUTorch_YOLO_Model()
+#ML.YOLO_Model_training()
+#ML.YOLO_Model_validation()
+#ML.export_YOLO_model()
+#ML.performance()
+#EV=MSUTorch_Eval()
+#EV.testing_model_predictions()
+#EV.training_model_performance()
+#EV.testing_model_performance()
