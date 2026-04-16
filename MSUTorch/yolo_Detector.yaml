@@ -1,0 +1,27 @@
+paths:
+  root: "SavedImages"
+names:
+    - ook
+    - 4ask
+    - 8ask
+    - 16ask
+    - bpsk
+    - qpsk
+    - 2fsk
+    - 4fsk
+    - 2gfsk
+    - 4gfsk
+    - 2msk
+    - 4msk
+    - 2gmsk
+    - 4gmsk
+nc: 14
+
+
+train: "SavedImages/images/train"
+
+
+val: "SavedImages/images/val"
+
+
+test: "SavedImages/images/test"
