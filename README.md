@@ -1,4 +1,6 @@
 # MSUTorch
 This Github project is showcasing a RFML dataset generation framework through a collaboration between Morgan State senior Electrical and Computer Engineering students at Morgan State University and the SME (Subject Matter Expert) advisor at the Aerospace Coporation. The student team includes Corey Hicks, Zimiego Smith, and Jamari Richardson working under the guidance of a subject matter expert from the Aerospace Coporation, Donna Branchevsky and an Morgan State faculty advisor, Dr. Willie Thompson. 
 
-                ![alt text](image.png) ![alt text](image-1.png) ![alt text](image-2.png)
+                                    ![alt text](image.png) 
+                                    ![alt text](image-1.png) 
+                                    ![alt text](image-2.png)
