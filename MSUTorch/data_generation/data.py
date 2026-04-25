@@ -327,19 +327,20 @@ class MSUDataBlock: #Initializing metadata
 
 
 #--------------------------------
-     #EMI + Noise Signals
+     #EMI + Noise Signals [EMI = AWGN + Impairments + Tone Methods (EMI by itself is entered into the model as EMI=AWGN+Tone)]
 #--------------------------------
+
     def metadata_tone(self):
-          self.tone_metadata=DatasetMetadata(
+        self.tone_metadata=DatasetMetadata(
             num_iq_samples_dataset=ds["num_iq_samples_dataset"],
-            num_signals_min=ds["num_signals_min"],
+            num_signals_min=self.num_emi_signals_min,
             fft_size=ds["fft_size"],
-            num_signals_max=ds["num_signals_max"],
-            snr_db_min=self.snr_db_min,
+            num_signals_max=self.num_emi_signals_max,
+            snr_db_min=self.snr_emi_db_min,
             signal_bandwidth_max=ds["signal_bandwidth_max"],
             signal_bandwidth_min=ds["signal_bandwidth_min"],
-            snr_db_max=self.snr_db_max,
-            class_list=self.class_list,
+            snr_db_max=self.snr_emi_db_max,
+            class_list=["tone"],
             signal_bandwidth_freq_max=ds["signal_bandwidth_freq_max"],
             signal_bandwidth_freq_min=ds["signal_bandwidth_freq_min"],
             sample_rate=ds["sample_rate"],
@@ -348,163 +349,281 @@ class MSUDataBlock: #Initializing metadata
             signal_duration_in_samples_min=ds["signal_duration_in_samples_min"],
             signal_duration_in_samples_max=ds["signal_duration_in_samples_max"],
             )
-          print(f"Here are the {mode} metadata values that you entered for {self.tone_metadata}:")
-          return self.tone_metadata #Returning Metadata
-        
+        print(f"Here are the {mode} metadata values that you entered for {self.tone_metadata}:")
+        return self.tone_metadata #Returning Metadata
     
-    def AWGN_noise_power(self):
-        #Applying AWGN to clean signal
-        #Enter desired power for noise(ranging from -30 db to 0 dB) in the config.yaml file
-        self.noise=AWGN(noise_power_db=noise,bool=True)
-        return self.noise
     
-        
-    def signal_impairments(self):
-        self.impairments=Impairments(2) #Wireless Environment                                                
-        self.burst_impairments=self.impairments.signal_transforms
-        self.whole_signal_impairments=self.impairments.dataset_transforms
-        self.burst_impairments,self.whole_signal_impairments
-        
-    def signal_training_impaired_dataset(self):
-        self.training_impaired_dataset = TorchSigIterableDataset(
+    def signal_training_emi_dataset(self):
+        self.training_emi_dataset = TorchSigIterableDataset(
             dataset_metadata=self.tone_metadata,
-            transforms=[self.whole_signal_impairments,self.noise],
-            component_transforms=[self.burst_impairments])
-        
-    def signal_training_clean_plus_impaired_dataset(self):
-        self.training_impaired_dataset_2 = TorchSigIterableDataset(
-            dataset_metadata=self.dataset_metadata,
-            transforms=[self.whole_signal_impairments,self.noise],
-            component_transforms=[self.burst_impairments])
+            transforms=[self.noise],
+            signal_generators=[ToneSignalBuilder(dataset_metadata=self.tone_metadata)],
+            )
     
-    def signal_testing_impaired_dataset(self):
-        self.testing_impaired_dataset= TorchSigIterableDataset(
+    def signal_testing_emi_dataset(self):
+        self.testing_emi_dataset= TorchSigIterableDataset(
             dataset_metadata=self.tone_metadata,
-            transforms=[self.whole_signal_impairments,self.noise],
-            component_transforms=[self.burst_impairments])
+            transforms=[self.noise],
+            signal_generators=[ToneSignalBuilder(dataset_metadata=self.tone_metadata)],
+            )
         
-    def signal_validation_impaired_dataset(self):
-        self.validation_impaired_dataset= TorchSigIterableDataset(
+    def signal_validation_emi_dataset(self):
+        self.validation_emi_dataset= TorchSigIterableDataset(
             dataset_metadata=self.tone_metadata,
-            transforms=[self.whole_signal_impairments,self.noise],
-            component_transforms=[self.burst_impairments])
+            transforms=[self.noise],
+            signal_generators=[ToneSignalBuilder(dataset_metadata=self.tone_metadata)],
+            )
      
-    def creating_noisy_validation_dataloader(self):
-        self.noisy_validation_dataloader=WorkerSeedingDataLoader(self.validation_impaired_dataset,collate_fn=lambda x:x)
-        self.noisy_validation_dataloader.seed(ds["seed"])
+    def creating_emi_validation_dataloader(self):
+        self.emi_validation_dataloader=WorkerSeedingDataLoader(self.validation_emi_dataset,collate_fn=lambda x:x)
+        self.emi_validation_dataloader.seed(ds["seed"])
     
-    def creating_noisy_testing_dataloader(self):
-        self.noisy_testing_dataloader=WorkerSeedingDataLoader(self.testing_impaired_dataset,collate_fn=lambda x:x)
-        self.noisy_testing_dataloader.seed(ds["seed"])
+    def creating_emi_testing_dataloader(self):
+        self.emi_testing_dataloader=WorkerSeedingDataLoader(self.testing_emi_dataset,collate_fn=lambda x:x)
+        self.emi_testing_dataloader.seed(ds["seed"])
     
-    def creating_noisy_training_dataloader(self):
-        self.noisy_training_dataloader=WorkerSeedingDataLoader(self.training_impaired_dataset,collate_fn=lambda x:x)
-        self.noisy_training_dataloader.seed(ds["seed"])
+    def creating_emi_training_dataloader(self):
+        self.emi_training_dataloader=WorkerSeedingDataLoader(self.training_emi_dataset,collate_fn=lambda x:x)
+        self.emi_training_dataloader.seed(ds["seed"])
     
-    def writing_noisy_validation_dataset(self):
+    def writing_emi_validation_dataset(self):
         #writes the workerseedingdataloader dataset to disk
-        self.num_noisy_val_samples = len(self.class_list) * 500 # roughly 50 samples per class
-        print(f"The number of noisy training samples is {self.num_noisy_val_samples}")
+        self.num_emi_val_samples = 700 # roughly 50 samples per class
+        print(f"The number of emi training samples is {self.num_emi_val_samples}")
 
         dc = DatasetCreator(
-        dataloader=self.noisy_validation_dataloader,
-        root = f"{root}/noise_validation",
+        dataloader=self.emi_validation_dataloader,
+        root = f"{root}/emi_validation",
         overwrite=True,
-        dataset_length=self.num_noisy_val_samples)
+        dataset_length=self.num_emi_val_samples)
 
 
         print("\nWriting dataset to disk...")
         dc.create()
-        print("Dataset written to:",f"{root}/emi/noise_validation")
+        print("Dataset written to:",f"{root}/emi/emi_validation")
     
-    def writing_noisy_testing_dataset(self):
+    def writing_emi_testing_dataset(self):
         #writes the workerseedingdataloader dataset to disk
-        self.num_noisy_test_samples = len(self.class_list) * 400 # roughly 50 samples per class
-        print(f"The number of noisy training samples is {self.num_noisy_test_samples}")
+        self.num_emi_test_samples = 200 # roughly 50 samples per class
+        print(f"The number of emi training samples is {self.num_emi_test_samples}")
 
         dc = DatasetCreator(
-        dataloader=self.noisy_testing_dataloader,
-        root = f"{root}/noise_testing",
+        dataloader=self.emi_testing_dataloader,
+        root = f"{root}/emi_testing",
         overwrite=True,
-        dataset_length=self.num_noisy_test_samples)
+        dataset_length=self.num_emi_test_samples)
 
 
         print("\nWriting dataset to disk...")
         dc.create()
-        print("Dataset written to:",f"{root}/noise_testing")
+        print("Dataset written to:",f"{root}/emi/emi_testing")
         
-    def writing_noisy_training_dataset(self):
+    def writing_emi_training_dataset(self):
         #writes the workerseedingdataloader dataset to disk
-        self.num_noisy_train_samples = len(self.class_list) * 100 # roughly 50 samples per class
-        print(f"The number of noisy training samples is {self.num_noisy_train_samples}")
+        self.num_emi_train_samples = 100 # roughly 10 samples per class
+        print(f"The number of emi training samples is {self.num_emi_train_samples}")
 
         dc = DatasetCreator(
-        dataloader=self.noisy_training_dataloader,
-        root = f"{root}/noise_training",
+        dataloader=self.emi_training_dataloader,
+        root = f"{root}/emi_training",
         overwrite=True,
-        dataset_length=self.num_noisy_train_samples)
+        dataset_length=self.num_emi_train_samples)
 
 
         print("\nWriting dataset to disk...")
         dc.create()
-        print("Dataset written to:",f"{root}/noise_training")
+        print("Dataset written to:",f"{root}/emi/emi_training")
     
-    def reading_noisy_training_dataset(self):
+    def reading_emi_training_dataset(self):
         #Reads the dataset from disk
-        self.noise_training_static_dataset=StaticTorchSigDataset(
-            root=f"{root}/noise_training",
+        self.emi_training_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/emi_training",
             transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
             target_labels=["yolo_label"]
             )
-        print("\nLoaded noise training static dataset length:", len(self.noise_training_static_dataset))
-        print(self.noise_training_static_dataset)
+        print("\nLoaded EMI training static dataset length:", len(self.emi_training_static_dataset))
+        print(self.emi_training_static_dataset)
     
-    def reading_noisy_testing_dataset(self):
+    def reading_emi_testing_dataset(self):
         #Reads the dataset from disk
-        self.noise_testing_static_dataset=StaticTorchSigDataset(
-            root=f"{root}/noise_testing",
+        self.emi_testing_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/emi_testing",
             transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
             target_labels=["yolo_label"],
             )
-        print("\nLoaded noise testing static dataset length:", len(self.noise_testing_static_dataset))
-        print(self.noise_testing_static_dataset)
+        print("\nLoaded EMI testing static dataset length:", len(self.emi_testing_static_dataset))
+        print(self.emi_testing_static_dataset)
         
-    def reading_noisy_validation_dataset(self):
+    def reading_emi_validation_dataset(self):
         #Reads the dataset from disk
-        self.noise_validation_static_dataset=StaticTorchSigDataset(
-            root=f"{root}/noise_validation",
+        self.emi_validation_static_dataset=StaticTorchSigDataset(
+            root=f"{root}/emi_validation",
             transforms=[Spectrogram(fft_size=ds["fft_size"]),YOLOLabel()],
             target_labels=["yolo_label"],
             )
-        print("\nLoaded noise testing static dataset length:", len(self.noise_validation_static_dataset))
-        print(self.noise_validation_static_dataset)
+        print("\nLoaded EMI testing static dataset length:", len(self.emi_validation_static_dataset))
+        print(self.emi_validation_static_dataset)
 
-    def inspecting_noisy_validation_batch(self):
-        self.val_noise_spectrograms, self.val_noise_labels = self.noise_training_static_dataset[1]
+    def inspecting_emi_validation_batch(self):
+        self.val_emi_spectrograms, self.val_emi_labels = self.emi_training_static_dataset[1]
         print("\n---Test Spectrogram INFO ---")
-        print("\nTest Spectrogram batch shape:", self.val_noise_spectrograms.shape)
-        print(f"\nData type: {self.val_noise_spectrograms.dtype}")
-        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.val_noise_labels)
-        print("Spectrogram (Real) I Samples:", self.val_noise_spectrograms.real)
-        print("Spectrogram (Imaginary) Q Samples:", self.val_noise_spectrograms.imag)
+        print("\nTest Spectrogram batch shape:", self.val_emi_spectrograms.shape)
+        print(f"\nData type: {self.val_emi_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.val_emi_labels)
+        print("Spectrogram (Real) I Samples:", self.val_emi_spectrograms.real)
 
-    def inspecting_noisy_testing_batch(self):
-        self.test_noise_spectrograms, self.test_noise_labels = self.noise_testing_static_dataset[1]
+    def inspecting_emi_testing_batch(self):
+        self.test_emi_spectrograms, self.test_emi_labels = self.emi_testing_static_dataset[1]
         print("\n---Test Spectrogram INFO ---")
-        print("\nTest Spectrogram batch shape:", self.test_noise_spectrograms.shape)
-        print(f"\nData type: {self.test_noise_spectrograms.dtype}")
-        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.test_noise_labels)
-        print("Spectrogram (Real) I Samples:", self.test_noise_spectrograms.real)
-        print("Spectrogram (Imaginary) Q Samples:", self.test_noise_spectrograms.imag)
+        print("\nTest Spectrogram batch shape:", self.test_emi_spectrograms.shape)
+        print(f"\nData type: {self.test_emi_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.test_emi_labels)
+        print("Spectrogram (Real) I Samples:", self.test_emi_spectrograms.real)
         
-    def inspecting_noisy_training_batch(self):
-        self.train_noise_spectrograms, self.train_noise_labels = self.noise_training_static_dataset[1]
+    def inspecting_emi_training_batch(self):
+        self.train_emi_spectrograms, self.train_emi_labels = self.emi_training_static_dataset[1]
         print("\n---Test Spectrogram INFO ---")
-        print("\nTest Spectrogram batch shape:", self.train_noise_spectrograms.shape)
-        print(f"\nData type: {self.train_noise_spectrograms.dtype}")
-        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.train_noise_labels)
-        print("Spectrogram (Real) I Samples:", self.train_noise_spectrograms.real)
-        print("Spectrogram (Imaginary) Q Samples:", self.train_noise_spectrograms.imag)
+        print("\nTest Spectrogram batch shape:", self.train_emi_spectrograms.shape)
+        print(f"\nData type: {self.train_emi_spectrograms.dtype}")
+        print(f"\nValidation YOlO Labels (Class Index, X center, Y center, Width, Height):", self.train_emi_labels)
+        print("Spectrogram (Real) I Samples:", self.train_emi_spectrograms.real)
+        
+    def emi_spectrogram_directories(self):
+        os.makedirs(disk_root, exist_ok=True)
+        self.emi_train_label_dir = f"{disk_root}/labels/emi/train"
+        self.emi_train_image_dir = f"{disk_root}/images/emi/train"
+        os.makedirs(self.emi_train_label_dir, exist_ok=True)
+        os.makedirs(self.emi_train_image_dir, exist_ok=True)
+
+        self.emi_val_label_dir = f"{disk_root}/labels/emi/val"
+        self.emi_val_image_dir = f"{disk_root}/images/emi/val"
+        os.makedirs(self.emi_val_label_dir, exist_ok=True)
+        os.makedirs(self.emi_val_image_dir, exist_ok=True)
+
+        self.emi_test_label_dir = f"{disk_root}/labels/emi/test"
+        self.emi_test_image_dir = f"{disk_root}/images/emi/test"
+        os.makedirs(self.emi_test_label_dir, exist_ok=True)
+        os.makedirs(self.emi_test_image_dir, exist_ok=True)
+
+    def writing_YOLO_emi_Training_Dataset(self):
+
+        for i, (train_emi_data, train_emi_labels) in tqdm(
+            enumerate(self.emi_training_static_dataset),
+            total=len(self.emi_training_static_dataset),
+            desc="\nWriting YOLO Training Dataset"):
+
+            file_base = str(i).zfill(10)
+            train_emi_label_file = f"{self.emi_train_label_dir}/{file_base}.txt"
+            train_emi_img_file = f"{self.emi_train_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            train_emi_img = train_emi_data.detach().numpy() if hasattr(train_emi_data, 'detach') else np.array(train_emi_data)
+            train_emi_img = np.squeeze(train_emi_img).astype(np.float32)
+            train_emi_img = np.abs(train_emi_img)
+            train_emi_img = train_emi_img - train_emi_img.min()
+            train_emi_img = np.maximum(train_emi_img, 1e-12)
+            train_emi_img = np.nan_to_num(train_emi_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if train_emi_img.max() > 0:
+                train_emi_img = train_emi_img / train_emi_img.max()
+                train_emi_img = (train_emi_img * 255).astype(np.uint8)
+                train_emi_img = np.stack([train_emi_img, train_emi_img, train_emi_img], axis=-1)
+                Image.fromarray(train_emi_img).save(train_emi_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+        with open(train_emi_label_file, "w") as f:
+            if len(train_emi_labels) > 0 and isinstance(train_emi_labels[0], (list, tuple, np.ndarray)):
+                for l in train_emi_labels:
+                    f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n")
+            elif len(train_emi_labels) > 0:
+                l = train_emi_labels
+                f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n")
+
+    print("\nYOLO Training EMI Dataset Generation Complete.")
+
+    def writing_YOLO_emi_Validation_Dataset(self):
+
+        for i, (validation_emi_data, validation_emi_labels) in tqdm(
+            enumerate(self.emi_validation_static_dataset),
+            total=len(self.emi_validation_static_dataset),
+            desc="\nWriting YOLO Validation Dataset"):
+
+            file_base = str(i).zfill(10)
+            val_emi_label_file = f"{self.emi_val_label_dir}/{file_base}.txt"
+            val_emi_img_file = f"{self.emi_val_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            val_emi_img = validation_emi_data.detach().numpy() if hasattr(validation_emi_data, 'detach') else np.array(validation_emi_data)
+            val_emi_img = np.squeeze(val_emi_img).astype(np.float32)
+            val_emi_img = np.abs(val_emi_img)
+            val_emi_img = val_emi_img - val_emi_img.min()
+            val_emi_img = np.maximum(val_emi_img, 1e-12)
+            val_emi_img = np.nan_to_num(val_emi_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if val_emi_img.max() > 0:
+                val_emi_img = val_emi_img / val_emi_img.max()
+                val_emi_img = (val_emi_img * 255).astype(np.uint8)
+                val_emi_img = np.stack([val_emi_img, val_emi_img, val_emi_img], axis=-1)
+                Image.fromarray(val_emi_img).save(val_emi_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+        with open(val_emi_label_file, "w") as f:
+            if len(validation_emi_labels) > 0 and isinstance(validation_emi_labels[0], (list, tuple, np.ndarray)):
+                for l in validation_emi_labels:
+                    f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n")
+            elif len(validation_emi_labels) > 0:
+                l = validation_emi_labels
+                f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n") 
+                
+    print("\nYOLO Validation EMI Dataset Generation Complete.")
+    
+    def writing_YOLO_emi_Testing_Dataset(self):
+
+        for i, (test_emi_data, test_emi_labels) in tqdm(
+            enumerate(self.emi_testing_static_dataset),
+            total=len(self.emi_testing_static_dataset),
+            desc="\nWriting YOLO Test Dataset"):
+
+            file_base = str(i).zfill(10)
+            test_emi_label_file = f"{self.emi_test_label_dir}/{file_base}.txt"
+            test_emi_img_file = f"{self.emi_test_image_dir}/{file_base}.png"
+
+        # -------------------------
+        # Convert spectrogram to image
+        # -------------------------
+            test_emi_img = test_emi_data.detach().numpy() if hasattr(test_emi_data, 'detach') else np.array(test_emi_data)
+            test_emi_img = np.squeeze(test_emi_img).astype(np.float32)
+            test_emi_img = np.abs(test_emi_img)
+            test_emi_img = test_emi_img - test_emi_img.min()
+            test_emi_img = np.maximum(test_emi_img, 1e-12)
+            test_emi_img = np.nan_to_num(test_emi_img, nan=0.0, posinf=0.0, neginf=0.0)
+
+            if test_emi_img.max() > 0:
+                test_emi_img = test_emi_img / test_emi_img.max()
+                test_emi_img = (test_emi_img * 255).astype(np.uint8)
+                test_emi_img = np.stack([test_emi_img, test_emi_img, test_emi_img], axis=-1)
+                Image.fromarray(test_emi_img).save(test_emi_img_file)
+
+        # -------------------------
+        # Write YOLO label
+        # -------------------------
+        with open(test_emi_label_file, "w") as f:
+            if len(test_emi_labels) > 0 and isinstance(test_emi_labels[0], (list, tuple, np.ndarray)):
+                for l in test_emi_labels:
+                    f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n")
+            elif len(test_emi_labels) > 0:
+                l = test_emi_labels
+                f.write(f"{int(l[0])} {l[1]:.6f} {l[2]:.6f} {l[3]:.6f} {l[4]:.6f}\n")
+
+    print("\nYOLO Testing EMI Dataset Generation Complete.")
    
 #-----------------------
 #Clean+EMI Pipeline
