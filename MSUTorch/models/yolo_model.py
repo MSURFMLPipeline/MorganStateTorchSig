@@ -1,8 +1,13 @@
+import os
+from ultralytics import YOLO
+from MSUTorch.data_generation.data import MSUDataBlock
+from MSUTorch.config_loader import train
+
 class MSUTorch_YOLO_Model(MSUDataBlock):
     def __init__(self):
         super().__init__()
 
-     def YOLO_Model_training(self):
+    def YOLO_Model_training(self):
         print("Starting YOLO training")
         self.model = YOLO("yolov8n.pt")
         self.model.train(
