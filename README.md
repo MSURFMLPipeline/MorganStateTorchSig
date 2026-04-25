@@ -53,8 +53,15 @@ yolo_Detector_3.yaml
 Users are able to use this pipeline to generate different data. They are able to train a YOLOv8n model on different data types
 Within the `config.yaml` file, a user will be able to select one of the three data options to generate data (Clean, EMI, or EMI+Clean)
 
-1. Selecting Data Option for Synthethic Data Generation
+1. Selecting Data Option Mode for Synthethic Data Generation
 - A user must select one of the data options in the `config.yaml` file
+
+| Dataset Modes | Description |
+|-------|---------|
+|`Clean`| Generates clean signals only |
+|`EMI`|Generates EMI (tone) interference with awgn signals only| 
+|`Clean+EMI`| Generates mixed clean + EMI signals. Where EMI is a tone with awgn and wireless imapairments| 
+
 2. Run the pipeline
 - python `main.py`
 
