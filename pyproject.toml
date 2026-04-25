@@ -4,17 +4,16 @@ requires = ["setuptools>=61", "setuptools-rust>=1.10"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "torchsig"
-description = "Signal Processing Machine Learning Toolkit"
+name = "msutorch"
+version = "0.1.0"
+description = "MSU RFML Signal Detection Pipeline (TorchSig-based)"
 authors = [
-    {name = "TorchSig Team"},
+    {name = "MSU RFML Pipeline Team"},
 ]
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-license-files = ["LICENSE.md"]
 keywords = ["signal processing", "machine learning"]
-dynamic = ["version"]
 
 classifiers = [
     "Programming Language :: Python",
