@@ -32,6 +32,6 @@ def run_clean_plus_emi_pipeline():
   ML=MSUTorch_YOLO_Model()
   ML.YOLO_Model_Clean_EMI_training()
   ML.YOLO_Clean_EMI_Model_validation()
-ML.export_YOLO_Clean_EMI_model()
+  ML.export_YOLO_Clean_EMI_model()
   ML.clean_emi_performance()
   ML.clean_training_model_performance()
