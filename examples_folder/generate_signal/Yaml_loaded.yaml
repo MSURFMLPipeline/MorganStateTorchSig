@@ -1,0 +1,22 @@
+seed: 42
+target_labels: [class_name, snr_db]
+dataset_metadata:
+  num_iq_samples_dataset: 4096
+  fft_size: 64
+  num_signals_min: 1
+  num_signals_max: 1
+  sample_rate: 10000000.0
+  num_signals_distribution: null
+  snr_db_min: 0.0
+  snr_db_max: 50.0
+  signal_duration_min: 4.096e-05
+  signal_duration_max: 8.192e-05
+  signal_bandwidth_min: 500000.0
+  signal_bandwidth_max: 1000000.0
+  signal_center_freq_min: -5000000.0
+  signal_center_freq_max: 4999999.9995
+  cochannel_overlap_probability: 0.1
+  class_list: [ook, 4ask, 8ask, 16ask, 32ask, 64ask, 2fsk, 2gfsk, 2msk, 2gmsk, 4fsk, 4gfsk, 4msk, 4gmsk, 8fsk, 8gfsk, 8msk, 8gmsk, 16fsk, 16gfsk, 16msk, 16gmsk, bpsk, qpsk, 8psk, 16psk, 32psk, 64psk, 16qam,
+    32qam, 32qam_cross, 64qam, 128qam_cross, 256qam, 512qam_cross, 1024qam, ofdm-64, ofdm-72, ofdm-128, ofdm-180, ofdm-256, ofdm-300, ofdm-512, ofdm-600, ofdm-900, ofdm-1024, ofdm-1200, ofdm-2048, fm, am-dsb-sc,
+    am-dsb, am-lsb, am-usb, lfm_data, lfm_radar, chirpss, tone]
+  class_distribution: null

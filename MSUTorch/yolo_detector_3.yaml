@@ -1,0 +1,28 @@
+paths:
+    root: "SavedImages"
+
+names: 
+
+    - tone
+    - ook
+    - 4ask
+    - 8ask
+    - 16ask
+    - bpsk
+    - qpsk
+    - 2fsk
+    - 4fsk
+    - 2gfsk
+    - 4gfsk
+    - 2msk
+    - 4msk
+    - 2gmsk
+    - 4gmsk
+
+nc: 15
+
+train: "SavedImages/images/emi+clean/train"
+
+val: "SavedImages/images/emi+clean/val"
+
+test: "SavedImages/images/emi+clean/test"

@@ -1,0 +1,37 @@
+def run_clean_pipeline():
+    #--------------------
+    #Clean Data Generation Pipeline (Completed)
+    #--------------------
+    data=MSUDataBlock()
+    data.Dataset_Mode()
+    data.selection_conditions()
+    data.clean_metadata()
+    data.signal_generators_for_dataset()
+    data.training_dataset()
+    data.testing_dataset()
+    data.validation_dataset()
+    data.creating_testing_dataloader()
+    data.creating_training_dataloader()
+    data.creating_validation_dataloader()
+    data.writing_testing_dataset()
+    data.writing_training_dataset()
+    data.writing_validation_dataset()
+    data.reading_training_dataset()
+    data.reading_validation_dataset()
+    data.reading_testing_dataset()
+    data.inspecting_training_batch()
+    data.inspecting_test_batch()
+    data.inspecting_validation_batch()
+
+
+    data.spectrogram_image_directories()
+    data.writing_YOLO_Validation_Dataset()
+    data.writing_YOLO_Testing_Dataset()
+    data.writing_YOLO_Training_Dataset()
+    ML=MSUTorch_YOLO_Model()
+    ML.YOLO_Model_training()
+    ML.YOLO_Model_validation()
+    ML.export_YOLO_model()
+    ML.performance()
+    ML.training_model_performance()
+

@@ -1,0 +1,5 @@
+root: /home/vboxuser/MorganStateTorchSig/MSUTorch/generate_signal/group_example
+overwrite: true
+batch_size: 11
+num_workers: 4
+complete: true
