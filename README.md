@@ -75,7 +75,14 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 - `MSUTorch/dataset_generation/data.py`: Generates data and writes to disk
 - `MSUTorch/dataset_generation/transforms.py`: Reads from disk and handels YOLO Label and Spectrogram transforms
 - `MSUTorch/models/evaluation.py`: Handels evaluation of the training/testing/validation datasets in the YOLOv8n model
-  
+
+# Future Works
+
+1. Working on allowing users to build their own EMI in complaince to FCC standards
+2. Making an option for users to train their own model
+3. Greater model diversity and EMI diversity
+4. Testing pipeline for over-the-air transmission 
+
 # License
 MorganStateTorchSig is released under the MIT License. The MIT license is a popular open-source software license enabling free use, redistribution, and modifications, even for commercial purposes, provided the license is included in all copies or substantial portions of the software. MorganStateTorchSig has no connection to MIT, other than through the use of this license.
 
