@@ -1,8 +1,40 @@
 from MSUTorch.data_generation.clean import run_clean_pipeline
 from MSUTorch.data_generation.emi import run_emi_pipeline
 from MSUTorch.data_generation.run_clean_plus_emi import run_clean_plus_emi_pipeline
+import os 
+import yaml
+#---------------
+#Loading YAMLs
+#---------------
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+ds = config["dataset"]
+train = config["training"]
+validation = config["validation"]
+test = config["test"]
+num_signals=config["num_signals"]
 
-# Whichever one you dont want to run you can comment that out
+class_lists=config["class_list"]
+snr=config["snr_db"]
+noise=config["noise_power"]
+root = ds["root"]
+os.makedirs(root,  exist_ok=True)
+mode=ds["mode"]
+root = os.path.join(ds["root"], mode)
+
+with open("yolo_Detector_2.yaml","r") as f:
+    detector = yaml.safe_load(f)
+dt=detector["names"]
+paths=detector["paths"]
+
+
+with open("yolo_Detector.yaml","r") as f:
+    detector = yaml.safe_load(f)
+dt=detector["names"]
+paths=detector["paths"]
+disk_root=paths["root"]
+
+# In order to run the pipeline, whichever pipeline you dont want to run, you can just comment that out
 if __name__ == "__main__":
  
     # run_clean_pipeline()
