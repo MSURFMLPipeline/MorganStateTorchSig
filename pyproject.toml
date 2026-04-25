@@ -35,6 +35,7 @@ dependencies = [
     "pandas",
     "PyWavelets",
     "scikit-learn",
+    "PyYAML",
     "timm",
     "pytorch_lightning>=2.0.0,<3.0.0",
     "ultralytics==8.3.57",  # Keep the latest version
