@@ -61,9 +61,9 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 # Core Scripts
 
 - `MSUTorch/model/evaluation.py/`: 
-- `MSUTorch/data_generation/clean.py/`: Allows users to generate clean data from the `data.py` file 
-- `MSUTorch/data_generation/clean_plus_emi.py/`: Allows users to generate clean+emi data from the `data.py` file
-- `MSUTorch/data_generation/emi.py/`: Allows users to generate emi data from `data.py` file
+- `MSUTorch/data_generation/clean.py`: Allows users to generate clean data from the `data.py` file 
+- `MSUTorch/data_generation/clean_plus_emi.py`: Allows users to generate clean+emi data from the `data.py` file
+- `MSUTorch/data_generation/emi.py`: Allows users to generate emi data from `data.py` file
 
 # License
 MorganStateTorchSig is released under the MIT License. The MIT license is a popular open-source software license enabling free use, redistribution, and modifications, even for commercial purposes, provided the license is included in all copies or substantial portions of the software. MorganStateTorchSig has no connection to MIT, other than through the use of this license.
