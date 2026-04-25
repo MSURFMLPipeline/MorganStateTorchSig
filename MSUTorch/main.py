@@ -30,6 +30,7 @@ paths=detector["paths"]
 
 
 with open(os.path.join(_DIR, "yolo_detector.yaml"), "r") as f:
+    detector = yaml.safe_load(f)
 dt=detector["names"]
 paths=detector["paths"]
 disk_root=paths["root"]
