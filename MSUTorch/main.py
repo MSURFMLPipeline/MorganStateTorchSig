@@ -5,6 +5,6 @@ from MSUTorch.data_generation.run_clean_plus_emi import run_clean_plus_emi_pipel
 # Whichever one you dont want to run you can comment that out
 if __name__ == "__main__":
  
-    # run_clean()
-    run_clean_emi()
-    # run_emi()
+    # run_clean_pipeline()
+    run_clean_plus_emi_pipeline()
+    # run_emi_pipeline()
