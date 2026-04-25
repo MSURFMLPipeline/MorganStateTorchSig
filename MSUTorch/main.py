@@ -6,13 +6,14 @@ import yaml
 #---------------
 #Loading YAMLs
 #---------------
-with open("config.yaml", "r") as f:
+_DIR = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(_DIR, "config.yaml"), "r") as f:
     config = yaml.safe_load(f)
 ds = config["dataset"]
 train = config["training"]
 validation = config["validation"]
 test = config["test"]
-num_signals=config["num_signals"]
+num_signals = config["num_signals"]
 
 class_lists=config["class_list"]
 snr=config["snr_db"]
@@ -20,16 +21,15 @@ noise=config["noise_power"]
 root = ds["root"]
 os.makedirs(root,  exist_ok=True)
 mode=ds["mode"]
-root = os.path.join(ds["root"], mode)
 
-with open("yolo_Detector_2.yaml","r") as f:
+root = os.path.join(ds["root"], mode)
+with open(os.path.join(_DIR, "yolo_detector_2.yaml"), "r") as f:
     detector = yaml.safe_load(f)
 dt=detector["names"]
 paths=detector["paths"]
 
 
-with open("yolo_Detector.yaml","r") as f:
-    detector = yaml.safe_load(f)
+with open(os.path.join(_DIR, "yolo_detector.yaml"), "r") as f:
 dt=detector["names"]
 paths=detector["paths"]
 disk_root=paths["root"]
