@@ -26,20 +26,20 @@ The `examples/` directory is to help those who are new to object oriented progra
 
 1. Clone the Repository
 ```
-git clone https://github.com/MorganStateTorchSig/MSUTorch.git
-cd MSUTorch
+git clone https://github.com/MSURFMLPipeline/MorganStateTorchSig.git
+cd MorganStateTorchSig
 pip install -e .
 ```
 2. Install the following dependencies
 ```
 pip install -r requirements.txt
 ```
-3. Configure yaml files (Copy as needed)
+3. Configure yaml files (Edit as needed)
 ```
-cp config.yaml
-cp yolo_Detector.yaml
-cp yolo_Detector_2.yaml
-cp yolo_Detector_3.yaml
+config.yaml
+yolo_Detector.yaml
+yolo_Detector_2.yaml
+yolo_Detector_3.yaml
 ```
 | Files | Purpose |
 |-------|---------|
@@ -50,6 +50,7 @@ cp yolo_Detector_3.yaml
 
 # Usage
 
+Users are able to use this pipeline to generate different data. They are able to train a YOLOv8n model on different data types
 Within the `config.yaml` file, a user will be able to select one of the three data options to generate data (Clean, EMI, or EMI+Clean)
 
 1. Selecting Data Option for Synthethic Data Generation
@@ -57,5 +58,12 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 2. Run the pipeline
 - python `main.py`
 
+# Core Scripts
 
+- `MSUTorch/model/evaluation.py/`: 
+- `MSUTorch/data_generation/clean.py/`: Allows users to generate clean data from the `data.py` file 
+- `MSUTorch/data_generation/clean_plus_emi.py/`: Allows users to generate clean+emi data from the `data.py` file
+- `MSUTorch/data_generation/emi.py/`: Allows users to generate emi data from `data.py` file
 
+# License
+MorganStateTorchSig is released under the MIT License. The MIT license is a popular open-source software license enabling free use, redistribution, and modifications, even for commercial purposes, provided the license is included in all copies or substantial portions of the software. MorganStateTorchSig has no connection to MIT, other than through the use of this license.
