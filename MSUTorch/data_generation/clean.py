@@ -22,8 +22,6 @@ def run_clean_pipeline():
     data.inspecting_training_batch()
     data.inspecting_test_batch()
     data.inspecting_validation_batch()
-
-
     data.spectrogram_image_directories()
     data.writing_YOLO_Validation_Dataset()
     data.writing_YOLO_Testing_Dataset()
