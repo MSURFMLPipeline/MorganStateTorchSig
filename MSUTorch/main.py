@@ -1,6 +1,6 @@
 from MSUTorch.data_generation.clean import run_clean_pipeline
 from MSUTorch.data_generation.emi import run_emi_pipeline
-from MSUTorch.data_generation.run_clean_plus_emi import run_clean_plus_emi_pipeline
+from MSUTorch.data_generation.clean_plus_emi import run_clean_plus_emi_pipeline
 import os 
 import yaml
 #---------------
