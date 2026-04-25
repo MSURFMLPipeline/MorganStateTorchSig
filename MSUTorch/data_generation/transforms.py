@@ -1,5 +1,6 @@
-
-
+class MSUDataBlock: #Initializing metadata
+    def __init__ (self):
+        pass
 
       def writing_YOLO_CPE_Test_Dataset(self):
 
