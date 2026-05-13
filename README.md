@@ -75,6 +75,7 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 - `MSUTorch/dataset_generation/data.py`: Generates data and writes to disk
 - `MSUTorch/dataset_generation/transforms.py`: Reads from disk and handels YOLO Label and Spectrogram transforms
 - `MSUTorch/models/evaluation.py`: Handels evaluation of the training/testing/validation datasets in the YOLOv8n model
+- `MSUTorch/
 
 # Future Works
 
