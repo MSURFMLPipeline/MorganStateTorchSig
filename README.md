@@ -59,11 +59,11 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 |`Clean+EMI`| Generates mixed clean + EMI signals. Where EMI is a tone with awgn and wireless imapairments| 
 
 2. Run the pipeline
-- python `main.py`
+- python `main.py` *Note in this script the user must comment out two of the data options that they don't wish to generate data for
 
 3. Changing Training/Testing/Validation split
 - The default split for testing, training, and validation is 15% testing , 70% training, and 15% validation
-- To change the values in the main script a user will need to change the multiplier for the number of samples for splitting the data
+- For users that want to change the values in the main script a user will need to change the multiplier for the number of samples for splitting the data
 
 # Core Scripts
 
