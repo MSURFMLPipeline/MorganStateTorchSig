@@ -61,6 +61,10 @@ Within the `config.yaml` file, a user will be able to select one of the three da
 2. Run the pipeline
 - python `main.py`
 
+3. Changing Training/Testing/Validation split
+- The default split for testing, training, and validation is 15% testing , 70% training, and 15% validation
+- To change the values in the main script a user will need to change the multiplier for the number of samples for splitting the data
+
 # Core Scripts
 
 - `MSUTorch/model/evaluation.py`: Has evaluation metrics for the train/test/validation datasets
